@@ -74,7 +74,7 @@
       var link = t.kind === "prob"
         ? ["Builds on", (t.deps || []).map(function (d) { return code(H.BY_ID[d]) + " " + H.BY_ID[d].name; }).join(" · ")]
         : ["Used by", H.usedBy(t.id).length ? H.usedBy(t.id).map(function (p) { return p.name; }).join(" · ") : "General knowledge; not a core dependency of the listed problems"];
-      var lesson = t.id === "scale" ? "<a href='index.html#lesson=F01'>Open Lesson 1 in the Teaching App →</a>" : "";
+      var lesson = H.isReady(code(t)) ? "<a href='index.html#lesson=" + code(t) + "'>Open lesson " + code(t) + " in the Teaching App →</a>" : "";
       return "<details class='topic' data-id='" + t.id + "'" + (openIds.indexOf(t.id) >= 0 ? " open" : "") + "><summary><span class='mono' style='font-family:var(--mono);color:var(--text-3);font-weight:400'>" + code(t) + "</span>" + esc(t.name) + " " + statusPill(t) + "</summary><div class='body'>" +
         "<p>" + md(t.why) + "</p><ul>" + t.concepts.map(function (c) { return "<li>" + md(c) + "</li>"; }).join("") + "</ul>" +
         "<div class='props'><span class='k'>" + (t.kind === "fund" ? "Phase" : "Difficulty") + "</span><span>" + esc(t.group) + "</span><span class='k'>" + link[0] + "</span><span>" + esc(link[1]) + "</span><span class='k'>Status</span><span><label class='toggle' style='padding:0'><input type='checkbox' class='mark' data-id='" + t.id + "'" + (H.isDone(t.id) ? " checked" : "") + "> Mark done</label></span></div>" +

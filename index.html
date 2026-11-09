@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
   <script src="assets/data.js" defer></script>
+  <script src="assets/lessons/manifest.js" defer></script>
   <script src="assets/app.js" defer></script>
 </head>
 <body>
@@ -18,7 +19,7 @@
   </header>
   <main class="wrap">
     <h1>HLD Teaching App</h1>
-    <p class="summary">Deepak's lesson player for system design. Lesson 1, Scalability, is ready: step-by-step slides with evolving architecture diagrams, a traffic simulator, real-world examples, pitfalls, a quiz and an interview practice question. Progress and quiz answers are saved in this browser.</p>
+    <p class="summary">Deepak's lesson player for system design. Each lesson has step-by-step slides with diagrams, an interactive model, real-world examples, interview pitfalls, a quiz, an interview practice question and a recap. Progress and quiz answers are saved in this browser.</p>
 
     <div class="player">
       <aside class="sidebar" aria-label="Lessons">
@@ -30,21 +31,17 @@
         <div id="coming" hidden>
           <section class="sec" style="margin-top:0">
             <h2 id="coming-title"></h2>
-            <div class="callout info"><span class="lead">Coming next</span>This lesson isn't written yet. It will be added in roadmap order; Lesson 1 is ready now.</div>
-            <div class="btnrow"><button class="btn primary" id="back-l1" type="button">Back to Lesson 1: Scalability</button></div>
+            <div class="callout info"><span class="lead">Coming next</span>This lesson isn't written yet. Lessons are added in roadmap order.</div>
+            <div class="btnrow"><button class="btn primary" id="back-l1" type="button">Go to the next ready lesson</button></div>
           </section>
         </div>
 
-        <div id="lesson1">
-          <nav class="toc" aria-label="Lesson contents"><ol>
-            <li><a href="#slides">Lesson 1 slides</a></li>
-            <li><a href="#sim">Traffic simulator</a></li>
-            <li><a href="#examples">Real-world examples</a></li>
-            <li><a href="#pitfalls">Common interview pitfalls</a></li>
-            <li><a href="#quiz">Quiz</a></li>
-            <li><a href="#practice">Interview practice</a></li>
-            <li><a href="#recap">Recap card</a></li>
-          </ol></nav>
+        <div id="lesson" hidden>
+          <p class="caption" id="lesson-kicker"></p>
+          <h2 id="lesson-title" style="font-size:26px;margin:0 0 6px"></h2>
+          <p id="lesson-summary" style="color:var(--text-2)"></p>
+          <div id="lesson-deps" class="sec" hidden style="margin-top:16px"></div>
+          <nav class="toc" aria-label="Lesson contents" style="margin-top:20px"><ol id="lesson-toc"></ol></nav>
 
           <section class="sec" id="slides">
             <h2 id="slide-title"></h2>
@@ -53,6 +50,7 @@
             <p id="slide-text"></p>
             <ul id="slide-points"></ul>
             <div class="proscons" id="slide-proscons" hidden></div>
+            <div class="tablewrap" id="slide-table" hidden></div>
             <div class="btnrow">
               <button class="btn" id="prev" type="button">Back</button>
               <button class="btn primary" id="next" type="button">Next</button>
@@ -60,40 +58,20 @@
             <p class="caption">Tip: use the ← and → arrow keys to move between steps.</p>
           </section>
 
-          <section class="sec" id="sim">
-            <h2>Traffic simulator: what breaks first?</h2>
-            <p class="caption">An illustrative teaching model, not benchmarks: real limits depend on hardware, request cost and read/write mix.</p>
-            <div class="seg" id="stages"></div>
-            <div>
-              <label class="field" for="tier">Daily active users: <strong id="tier-label" style="color:var(--text)"></strong></label>
-              <input type="range" id="tier" min="0" max="5" step="1" aria-label="Traffic level">
-              <div class="rangeends"><span>Hundreds</span><span>Tens of millions</span></div>
-            </div>
-            <div class="rows" id="sim-rows"></div>
-            <p id="sim-text"></p>
+          <section class="sec" id="widget" hidden>
+            <h2 id="widget-title"></h2>
+            <p class="caption" id="widget-caption"></p>
+            <div id="widget-body" style="display:flex;flex-direction:column;gap:16px"></div>
           </section>
 
           <section class="sec" id="examples">
             <h2>Real-world examples</h2>
-            <div class="rows">
-              <div class="row"><div><div class="t">Stack Overflow: scaling up goes far</div><div class="dt">Has publicly described serving its very large traffic from a small number of powerful web and SQL Server machines: proof that vertical scaling plus good caching can last a long time.</div></div></div>
-              <div class="row"><div><div class="t">Facebook: caching at massive scale</div><div class="dt">The paper 'Scaling Memcache at Facebook' (NSDI 2013) describes a huge Memcached tier that absorbs reads in front of MySQL.</div></div></div>
-              <div class="row"><div><div class="t">Instagram: sharding PostgreSQL</div><div class="dt">Its 2012 engineering post 'Sharding &amp; IDs at Instagram' describes many logical shards mapped onto fewer physical PostgreSQL servers, with IDs that embed the shard.</div></div></div>
-              <div class="row"><div><div class="t">Netflix: stateless services that expect failure</div><div class="dt">Runs stateless services on AWS with autoscaling, and built Chaos Monkey to randomly terminate instances so every service must survive losing one.</div></div></div>
-            </div>
+            <div class="rows" id="examples-list"></div>
           </section>
 
           <section class="sec" id="pitfalls">
             <h2>Common interview pitfalls</h2>
-            <ul class="cons">
-              <li>Jumping to sharding or microservices before estimating the load</li>
-              <li>Saying 'add more servers' while sessions still live in server memory</li>
-              <li>Forgetting that the load balancer itself needs redundancy</li>
-              <li>Scaling the app tier and ignoring that the database becomes the bottleneck</li>
-              <li>Adding a cache without a TTL or invalidation story</li>
-              <li>Sending reads to replicas without mentioning replication lag</li>
-              <li>Naming components without saying the trade-off each one brings</li>
-            </ul>
+            <ul class="cons" id="pitfalls-list"></ul>
           </section>
 
           <section class="sec" id="quiz">
@@ -104,33 +82,19 @@
 
           <section class="sec" id="practice">
             <h2>Interview practice</h2>
-            <div class="callout"><span class="lead">Question</span>Your photo-sharing startup runs its API and PostgreSQL on one server. Traffic is expected to grow 50x over the next year, and about 95% of requests are reads. How would you evolve the architecture? Answer out loud first, then reveal the model answer.</div>
+            <div class="callout"><span class="lead">Question</span><span id="practice-q"></span> Answer out loud first, then reveal the model answer.</div>
             <div class="btnrow"><button class="btn primary" id="toggle-model" type="button">Show model answer</button></div>
-            <ol class="steps" id="model" hidden>
-              <li><div class="t">Clarify and estimate</div><div class="dt">Ask for current DAU, peak QPS and data growth; 50x growth and 95% reads tells you reads are the main pressure.</div></li>
-              <li><div class="t">Scale up and separate the DB</div><div class="dt">Quick win: move PostgreSQL to its own, larger machine; add indexes for slow queries.</div></li>
-              <li><div class="t">Make the app stateless</div><div class="dt">Sessions to Redis or tokens; uploaded photos to object storage (e.g. S3) instead of local disk.</div></li>
-              <li><div class="t">Load balancer + multiple app servers</div><div class="dt">Redundant LB, autoscaled app servers across availability zones, health checks.</div></li>
-              <li><div class="t">CDN and cache</div><div class="dt">Serve photos via a CDN; cache hot metadata (profiles, feeds) with cache-aside and TTLs.</div></li>
-              <li><div class="t">Read replicas</div><div class="dt">Route reads to replicas, writes to the primary; handle lag with read-your-writes; set up automatic failover.</div></li>
-              <li><div class="t">Plan for sharding, but don't start there</div><div class="dt">Choose a likely shard key (user_id) and shard only if write volume or data size outgrows one primary.</div></li>
-              <li><div class="t">Close with trade-offs and monitoring</div><div class="dt">Name the remaining SPOFs, stale-cache and replica-lag trade-offs, and the metrics you'd watch (p99 latency, DB CPU, cache hit ratio).</div></li>
-            </ol>
+            <ol class="steps" id="model" hidden></ol>
           </section>
 
           <section class="sec" id="recap">
             <h2>Recap card</h2>
-            <div class="callout success"><ol>
-              <li>Scale up first for simplicity; scale out when you hit the ceiling or need redundancy.</li>
-              <li>Horizontal scaling needs stateless servers behind a redundant load balancer.</li>
-              <li>Then the database is the bottleneck: indexes, cache, read replicas, in that order.</li>
-              <li>Shard only when writes or data size outgrow one primary; it brings real costs.</li>
-              <li>Every fix moves the bottleneck: name it, remove SPOFs, and state the trade-off.</li>
-            </ol></div>
-            <div class="btnrow"><button class="btn primary" id="complete" type="button"></button></div>
+            <div class="callout success"><ol id="recap-list"></ol></div>
+            <div class="btnrow"><button class="btn primary" id="complete" type="button"></button><button class="btn" id="next-lesson" type="button"></button></div>
             <div class="links"><a href="roadmap.html">Back to the roadmap hub<span class="s">All topics, diagrams and your progress</span></a></div>
           </section>
         </div>
+        <p id="loading" hidden>Loading lesson…</p>
       </div>
     </div>
   </main>

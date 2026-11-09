@@ -321,7 +321,13 @@
     });
   }
 
+  var REG = {};
+  function registerLesson(l) { REG[l.code] = l; }
+  function byCode(c) { for (var i = 0; i < TOPICS.length; i++) { if (code(TOPICS[i]) === c) return TOPICS[i]; } return null; }
+  function isReady(c) { return (window.HLD_READY || []).indexOf(c) >= 0; }
+
   window.HLD = {
+    registerLesson: registerLesson, lessons: REG, byCode: byCode, isReady: isReady,
     PHASES: PHASES, LEVELS: LEVELS, GROUPS: PHASES.concat(LEVELS), TOPICS: TOPICS, BY_ID: BY_ID, FUNDS: FUNDS, PROBS: PROBS,
     code: code, usedBy: usedBy, getDone: getDone, isDone: isDone, setDone: setDone, load: load, save: save,
     esc: esc, md: md, flow: flow, renderDiagram: renderDiagram
