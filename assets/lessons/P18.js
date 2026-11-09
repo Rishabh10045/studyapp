@@ -7,7 +7,7 @@
     var s = ctx.state; if (!s.led) { s.led = []; s.keys = {}; s.psp = []; s.idem = true; s.n = 0; s.log = []; }
     el.innerHTML = "<p class='caption'>Simplified model: a ₹500 order, 3% platform fee. Every movement is a balanced double-entry transaction. Toggle idempotency and replay the nasty cases.</p>" +
       "<div class='controls'><label><input type='checkbox' data-r='idem'> Use idempotency key</label></div>" +
-      "<div class='controls'><button class='btn primary' data-a='pay'>New payment (order #" + "N)</button><button class='btn' data-a='retry'>Client retries after timeout</button><button class='btn' data-a='hook'>PSP webhook delivered again</button><button class='btn' data-a='settle'>PSP settles to bank</button><button class='btn' data-a='recon'>Run reconciliation</button><button class='btn' data-a='reset'>Reset</button></div>" +
+      "<div class='controls'><button class='btn primary' data-a='pay'>New payment</button><button class='btn' data-a='retry'>Client retries after timeout</button><button class='btn' data-a='hook'>PSP webhook delivered again</button><button class='btn' data-a='settle'>PSP settles to bank</button><button class='btn' data-a='recon'>Run reconciliation</button><button class='btn' data-a='reset'>Reset</button></div>" +
       "<div class='metrics' data-r='m'></div><div data-r='t' style='overflow-x:auto'></div><div class='rows' data-r='log'></div>";
     el.querySelector("[data-r='idem']").checked = !!s.idem;
     function post(desc, lines) { s.led.push({ d: desc, l: lines }); }
