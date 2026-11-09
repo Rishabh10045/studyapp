@@ -12,7 +12,7 @@
       "<label class='toggle'><input type='checkbox' data-r='key'> Requests carry an idempotency key (server dedupes)</label>" +
       "<div class='metrics' data-r='m'></div><div data-r='chart'></div><p class='caption'>Timeline: when 20 clients that all failed at t = 0 send their retries (first 4 retries shown). Without jitter they retry in synchronized waves. Expected values assume independent failures; for duplicates we assume half of failures are timeouts where the server did the work but the response was lost.</p>";
     var q = function (r) { return el.querySelector("[data-r='" + r + "']"); };
-    function delay(k, rnd) { var base = Math.min(32, Math.pow(2, k)); return s.pol === "fixed" ? 1 * (k + 1) : s.pol === "exp" ? base : rnd() * base; }
+    function delay(k, rnd) { var base = Math.min(32, Math.pow(2, k)); return s.pol === "fixed" ? 1 : s.pol === "exp" ? base : rnd() * base; }
     function draw() {
       el.querySelectorAll("[data-g='pol'] button").forEach(function (b) { b.className = b.getAttribute("data-v") === s.pol ? "active" : ""; });
       ["fail", "max"].forEach(function (k) { el.querySelector("[data-k='" + k + "']").value = s[k]; });
@@ -20,7 +20,7 @@
       var p = s.fail / 100, r = s.pol === "none" ? 0 : s.max, att = 0;
       for (var k = 0; k <= r; k++) att += Math.pow(p, k);
       var success = 1 - Math.pow(p, r + 1), dup = s.key ? 0 : (att - 1) * 0.5;
-      q("m").innerHTML = [[(success * 100).toFixed(2) + "%", "Eventual success rate"], [att.toFixed(2) + "×", "Load amplification"], [s.key ? "0" : dup.toFixed(2), "Duplicate side effects / request"], [r ? "~" + (s.pol === "fixed" ? r : Math.min(63, Math.pow(2, r) - 1)) + " s" : "0 s", "Worst-case retry wait"]]
+      q("m").innerHTML = [[(success * 100).toFixed(2) + "%", "Eventual success rate"], [att.toFixed(2) + "×", "Load amplification"], [s.key ? "0" : dup.toFixed(2), "Duplicate side effects / request"], [(function () { var w = 0; for (var j = 0; j < r; j++) w += s.pol === "fixed" ? 1 : Math.min(32, Math.pow(2, j)); return w; })() + " s", "Worst-case total wait"]]
         .map(function (m) { return "<div class='metric'><div class='v'>" + m[0] + "</div><div class='l'>" + m[1] + "</div></div>"; }).join("");
       var W = 600, Hh = 150, R = rng(7), maxT = 16, dots = "";
       if (s.pol !== "none") for (var c = 0; c < 20; c++) { var t = 0; for (var k2 = 0; k2 < Math.min(4, s.max); k2++) { t += delay(k2, R); if (t <= maxT) dots += "<circle cx='" + (t / maxT * (W - 20) + 10).toFixed(1) + "' cy='" + (10 + c * 6.5).toFixed(1) + "' r='3.5' fill='var(--c" + (k2 % 3) + ")'/>"; } }
