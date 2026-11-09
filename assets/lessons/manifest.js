@@ -1,2 +1,2 @@
 /* Lessons that are written. Add a code here when its assets/lessons/<CODE>.js file is ready. */
-window.HLD_READY = ["F01", "F02", "F03", "F04"];
+window.HLD_READY = ["F01", "F02", "F03", "F04", "F05"];
