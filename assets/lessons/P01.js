@@ -47,7 +47,7 @@
       { t: "6. Deep dive: generating codes", x: "Three common approaches.",
         table: [["Approach", "How", "Trade-off"], ["Counter + base62", "Unique numeric ID (range allocation or Snowflake, F25) → base62", "No collisions; sequential codes are guessable unless shuffled"], ["Hash + truncate", "MD5/SHA-256(long_url) → first 7 base62 chars", "Same URL → same code; collisions must be checked and resolved"], ["Random + check", "Random 7 chars, insert if not exists", "Simple; collision checks grow as space fills"]],
         p: ["Common answer: range-allocated counter → optionally permute (e.g. with a reversible bijection) → base62 → 7 chars"],
-        m: "flowchart LR\n  RG[\"Range server: block 5,000,000–5,009,999\"]:::s1 --> W[\"Write service picks 5,000,123\"] --> B62[\"base62 → '0lAt'… padded to 7\"]:::s0 --> DB[(\"insert code\")]" },
+        m: "flowchart LR\n  RG[\"Range server: block 5,000,000–5,009,999\"]:::s1 --> W[\"Write service picks 5,000,123\"] --> B62[\"base62 → 'Kyl9' (pad to 7)\"]:::s0 --> DB[(\"insert code\")]" },
       { t: "7. Deep dive: redirects and caching", x: "The redirect path must be fast and cheap.",
         pros: ["301 Moved Permanently: browsers and proxies can cache it → fewer hits on you"], cons: ["301: you lose click analytics and can't change the target easily; 302/307 hits you every time"],
         p: ["Most shorteners with analytics use 302 (or 301 with short cache lifetimes)", "Redis cache of code → long_url; LRU; ~20% of daily hot codes fit in memory", "CDN/edge caching of redirects possible with short TTLs", "Negative caching for unknown codes to absorb scans"],
@@ -67,7 +67,7 @@
       ["TinyURL", "Launched in 2002, one of the first widely used URL shorteners."],
       ["Bitly", "Offers branded short links with click analytics; analytics is a core product, which favours redirects that reach its servers."],
       ["t.co", "X/Twitter wraps every link in t.co to measure clicks and check links for malicious content."],
-      ["goo.gl", "Google shut down its shortener for new links in 2019 and announced that existing goo.gl links would stop redirecting in August 2025 — a reminder that 'forever' links are a product promise."]
+      ["goo.gl", "Google stopped creating goo.gl links in 2019, announced in 2024 that old links would stop redirecting, then in 2025 kept actively used links working — 'forever' links are a product promise you must plan for."]
     ],
     pitfalls: [
       "Skipping estimates — the 100:1 read ratio drives the whole design",
