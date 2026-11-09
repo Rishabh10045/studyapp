@@ -57,7 +57,7 @@
         m: "flowchart LR\n  Q[\"Queue: consume → delete\"]:::s1\n  L[\"Log: consume → advance offset; data stays\"]:::s0" },
       { t: "Delivery guarantees", x: "Networks and crashes force a choice about duplicates vs loss.",
         p: ["At-most-once: ack before processing; a crash loses the message", "At-least-once: ack after processing; a crash causes redelivery → duplicates (most common)", "Exactly-once: possible only within limited scopes (e.g. Kafka transactions for read-process-write within Kafka)", "Practical rule: at-least-once delivery + idempotent consumers"],
-        m: "sequenceDiagram\n  participant Q as Queue\n  participant W as Worker\n  Q->>W: deliver msg 42\n  W->>W: process (charge email sent)\n  Note over W: crash before ack\n  Q->>W: redeliver msg 42 after timeout\n  W->>W: dedupe by message id → skip" },
+        m: "sequenceDiagram\n  participant Q as Queue\n  participant W as Worker\n  Q->>W: deliver msg 42\n  W->>W: process (email sent)\n  Note over W: crash before ack\n  Q->>W: redeliver msg 42 after timeout\n  W->>W: dedupe by message id → skip" },
       { t: "Failures: retries and dead-letter queues", x: "A 'poison' message that always fails would be retried forever and block progress.",
         p: ["Retry with exponential backoff", "After N attempts, move to a dead-letter queue (DLQ) for inspection", "Alert on DLQ size; provide a redrive tool", "Make handlers idempotent since retries repeat work"],
         m: "flowchart LR\n  Q[(\"Main queue\")]:::s1 --> W[\"Worker\"]:::s0\n  W -->|\"fail, retry w/ backoff\"| Q\n  W -->|\"after 5 failures\"| DLQ[(\"Dead-letter queue\")]:::bad\n  DLQ --> OPS[\"Alert + inspect + redrive\"]" },
