@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Design (HLD) Study Roadmap</title>
+  <meta name="description" content="Hub for system design: 27 fundamentals in six phases, 18 classic design problems, an interview framework and core diagrams.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
+  <script src="assets/data.js" defer></script>
+  <script src="assets/roadmap.js" defer></script>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">HLD Study</span>
+    <nav><a href="index.html">Teaching App</a><a href="roadmap.html" class="active">Roadmap</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>System Design (HLD) Study Roadmap</h1>
+    <p class="summary">Deepak's hub for system design: 27 fundamentals in six phases, 18 classic design problems by difficulty, a reusable interview framework and core diagrams. Each topic gets its own lesson in the Teaching App.</p>
+
+    <nav class="toc" aria-label="Contents"><ol>
+      <li><a href="#roadmap">Roadmap at a glance</a></li>
+      <li><a href="#progress">Progress</a></li>
+      <li><a href="#explorer">Topic explorer</a></li>
+      <li><a href="#reuse">Which fundamentals pay off most</a></li>
+      <li><a href="#framework">Interview framework</a></li>
+      <li><a href="#arch">Generic scalable web architecture</a></li>
+      <li><a href="#cacheaside">Cache-aside read path</a></li>
+      <li><a href="#ring">Consistent hashing</a></li>
+      <li><a href="#est">Estimation cheat sheet</a></li>
+      <li><a href="#next">How we'll use this hub</a></li>
+    </ol></nav>
+
+    <section class="sec" id="roadmap">
+      <h2>Roadmap at a glance</h2>
+      <div class="diagram" id="dg-roadmap"></div>
+      <p>Learn fundamentals in phase order, and start easy problems as soon as the data layer is done; each problem below lists the fundamentals it builds on.</p>
+    </section>
+
+    <section class="sec" id="progress">
+      <h2>Progress</h2>
+      <p class="caption">Saved in this browser (localStorage). Tick topics in the explorer below or finish lessons in the Teaching App.</p>
+      <p id="progress-lead"></p>
+      <div class="metrics" id="metrics"></div>
+      <div class="card"><div class="legend"><span><i style="background:var(--c0)"></i>Done</span><span><i style="background:var(--other)"></i>To do</span></div><div class="bars" id="progress-bars" style="margin-top:14px"></div></div>
+      <div class="btnrow"><button class="btn" id="reset-progress" type="button">Clear all progress</button></div>
+    </section>
+
+    <section class="sec" id="explorer">
+      <h2>Topic explorer</h2>
+      <p class="caption">Filter, search, then expand a topic for why it matters, key concepts and its links.</p>
+      <div class="controls">
+        <div class="seg" id="track"></div>
+        <label class="field">Phase / difficulty<select id="group"></select></label>
+        <label class="field">Search<input type="search" id="q" placeholder="e.g. quorum, Kafka, geohash"></label>
+        <label class="toggle"><input type="checkbox" id="hide-done"> Hide done</label>
+        <button class="btn" id="reset" type="button">Reset</button>
+      </div>
+      <div class="tablewrap" id="table-wrap"></div>
+      <p id="nomatch" hidden></p>
+      <div id="details"></div>
+    </section>
+
+    <section class="sec" id="reuse">
+      <h2>Which fundamentals pay off most</h2>
+      <p class="caption">Number of the 18 design problems that list each fundamental as a dependency (top 10).</p>
+      <div class="card"><div class="bars" id="reuse-bars"></div></div>
+      <p>Caching, queues and sharding show up in most designs, so they are worth learning deeply first.</p>
+    </section>
+
+    <section class="sec" id="framework">
+      <h2>Interview framework</h2>
+      <div class="diagram" id="dg-framework"></div>
+      <div class="grid2">
+        <div class="card"><ol class="steps" id="fw-steps"></ol></div>
+        <div class="card">
+          <h3>Suggested time split, 45-minute round</h3>
+          <p class="caption">A common rule of thumb, not a fixed rule; adjust to the interviewer.</p>
+          <div class="bars" id="fw-bars"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="arch">
+      <h2>Generic scalable web architecture</h2>
+      <div class="diagram" id="dg-arch"></div>
+      <p>Start most high-level designs from this skeleton, then remove or specialise boxes for the problem at hand.</p>
+    </section>
+
+    <section class="sec" id="cacheaside">
+      <h2>Cache-aside read path</h2>
+      <div class="diagram" id="dg-seq"></div>
+    </section>
+
+    <section class="sec" id="ring">
+      <h2>Consistent hashing</h2>
+      <div class="grid2">
+        <div class="card"><h3>Hash ring</h3><div class="legend"><span><i style="background:var(--c0)"></i>Node</span><span><i style="background:var(--c1)"></i>Key</span></div><div id="ring-svg"></div></div>
+        <div class="card"><h3>How it works</h3><ul>
+          <li>Hash nodes and keys onto the same ring</li>
+          <li>A key belongs to the first node clockwise from it</li>
+          <li>Remove Node B and only k1 and k4 move, to Node C</li>
+          <li>Add a node and it takes keys only from its clockwise neighbour</li>
+          <li>Virtual nodes give each server many ring positions for even load</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section class="sec" id="est">
+      <h2>Estimation cheat sheet</h2>
+      <div class="grid2">
+        <div class="card"><h3>Handy conversions</h3><div class="tablewrap"><table>
+          <tr><th>Quantity</th><th>Value</th></tr>
+          <tr><td>Seconds in a day</td><td>86,400</td></tr>
+          <tr><td>1M requests/day</td><td>about 12 per second</td></tr>
+          <tr><td>100M requests/day</td><td>about 1,160 per second</td></tr>
+          <tr><td>2^10 / 2^20 / 2^30 / 2^40 bytes</td><td>KB / MB / GB / TB</td></tr>
+          <tr><td>99.9% availability</td><td>8.76 h downtime/year</td></tr>
+          <tr><td>99.99% availability</td><td>52.6 min downtime/year</td></tr>
+        </table></div></div>
+        <div class="card"><h3>Classic latency numbers</h3><p class="caption">Order-of-magnitude figures from the widely cited 'latency numbers every programmer should know' list; real hardware varies.</p><div class="tablewrap"><table>
+          <tr><th>Operation</th><th>Time</th></tr>
+          <tr><td>L1 cache reference</td><td>0.5 ns</td></tr>
+          <tr><td>Main memory reference</td><td>100 ns</td></tr>
+          <tr><td>Read 1 MB sequentially from memory</td><td>250 µs</td></tr>
+          <tr><td>Round trip within a datacenter</td><td>500 µs</td></tr>
+          <tr><td>Disk seek</td><td>10 ms</td></tr>
+          <tr><td>Packet California → Netherlands → California</td><td>150 ms</td></tr>
+        </table></div></div>
+      </div>
+    </section>
+
+    <section class="sec" id="next">
+      <h2>How we'll use this hub</h2>
+      <div class="callout"><span class="lead">Next step</span>Lesson 1 (F01 Scalability) is live in the HLD Teaching App. Each new lesson is added there in roadmap order, and progress shows up here.</div>
+      <div class="links"><a href="index.html">HLD Teaching App<span class="s">Lesson player, starting with Lesson 1: Scalability</span></a></div>
+    </section>
+  </main>
+  <a class="btn backtop" href="#">↑ Top</a>
+</body>
+</html>
