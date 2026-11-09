@@ -66,8 +66,8 @@
     widget: { heading: "Notification campaign simulator", caption: "Pick channels, audience, failure rate and retries to see sends, give-ups, duplicates and drain time.", render: widget },
     examples: [
       ["APNs and FCM", "iOS push goes through Apple Push Notification service and Android through Firebase Cloud Messaging; apps register device tokens that can expire or change."],
-      ["Uber", "Has written about its push platform delivering notifications to riders and drivers at scale, with prioritisation."],
-      ["Airbnb / LinkedIn", "Both have described central notification platforms with user preferences and frequency limits to avoid notification fatigue."],
+      ["Uber RAMEN", "Uber described RAMEN, its real-time push messaging platform that keeps persistent connections to rider and driver apps."],
+      ["LinkedIn Air Traffic Controller", "LinkedIn described ATC, a service that decides whether, when and on which channel to notify a member, to limit notification fatigue."],
       ["Email providers", "Services such as Amazon SES, SendGrid and Mailgun send email and report bounces and complaints through callbacks."]
     ],
     pitfalls: [
