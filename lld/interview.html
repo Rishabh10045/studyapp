@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLD VIP Interview Questions</title>
+  <meta name="description" content="Searchable bank of low-level design interview questions with model answers: OOP, SOLID, all 22 design patterns, concurrency, Java and machine-coding prompts with class-diagram outlines.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
+  <script src="assets/data.js" defer></script>
+  <script src="assets/lesson-kit.js" defer></script>
+  <script src="assets/lessons/manifest.js" defer></script>
+  <script src="assets/interview-data.js" defer></script>
+  <script src="assets/interview.js" defer></script>
+  <style>
+    .iq-actions { margin-left: auto; display: inline-flex; gap: 6px; }
+    .iq-actions button { font: inherit; font-size: 13px; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text-2); cursor: pointer; font-weight: 400; }
+    .iq-actions button.on { background: var(--accent-subtle); color: var(--accent); border-color: var(--accent); }
+    .iq-q { flex: 1 1 420px; }
+    .iq-id { font-family: var(--mono); color: var(--text-3); font-weight: 400; font-size: 13px; }
+    details.topic.done summary .iq-q { color: var(--text-3); text-decoration: line-through; }
+    .iq-group { margin-top: 26px; }
+    .iq-group h3 { display: flex; gap: 8px; align-items: baseline; }
+    .iq-group h3 .count { color: var(--text-3); font-weight: 400; font-size: 14px; }
+    .iq-body ul { margin: 0 0 12px; padding-left: 20px; }
+    .iq-body li + li { margin-top: 6px; }
+    .iq-body .lbl { font-size: 13px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+  </style>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">LLD Study<span class="tag">low-level design · Java</span></span>
+    <nav><a href="index.html">Teaching App</a><a href="roadmap.html">Roadmap</a><a href="interview.html" class="active">Interview Questions</a><a href="../index.html" title="Back to the High-Level Design (HLD) app">← HLD app</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>VIP LLD Interview Questions</h1>
+    <p class="summary" id="iq-summary">Model answers for the questions that come up again and again in low-level design and machine-coding rounds.</p>
+
+    <nav class="toc" aria-label="Contents"><ol>
+      <li><a href="#how">How to use this page</a></li>
+      <li><a href="#stats">Your progress</a></li>
+      <li><a href="#bank">Question bank</a></li>
+    </ol></nav>
+
+    <section class="sec" id="how">
+      <h2>How to use this page</h2>
+      <div class="callout"><span class="lead">Practise out loud</span>Read the question, answer it aloud (or sketch the classes) <em>before</em> opening the model answer. Mark it ✓ done when you can answer it cold, and ☆ bookmark the ones to revise. <strong>Frequently asked</strong> marks questions that come up across many LLD interviews; it is not a claim about any particular company.</div>
+    </section>
+
+    <section class="sec" id="stats">
+      <h2>Your progress</h2>
+      <p class="caption">Saved in this browser (localStorage key <code>lld.interview.v1</code>).</p>
+      <div class="metrics" id="iq-metrics"></div>
+    </section>
+
+    <section class="sec" id="bank">
+      <h2>Question bank</h2>
+      <p class="caption">Filter by section, pattern, difficulty or tag, or search question and answer text. Machine-coding prompts include a class-diagram outline.</p>
+      <div class="controls">
+        <div class="seg" id="iq-section"></div>
+      </div>
+      <div class="controls">
+        <label class="field">Topic<select id="iq-group"></select></label>
+        <label class="field">Difficulty<select id="iq-level"><option value="">All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select></label>
+        <label class="field">Search<input type="search" id="iq-q" placeholder="e.g. volatile, parking, decorator"></label>
+        <label class="toggle"><input type="checkbox" id="iq-faq"> Frequently asked only</label>
+        <label class="toggle"><input type="checkbox" id="iq-bm"> Bookmarked only</label>
+        <label class="toggle"><input type="checkbox" id="iq-hide"> Hide done</label>
+      </div>
+      <div class="btnrow"><button class="btn" id="iq-expand" type="button">Expand all shown</button><button class="btn" id="iq-collapse" type="button">Collapse all</button><button class="btn" id="iq-reset" type="button">Reset filters</button><button class="btn" id="iq-clear" type="button">Clear done &amp; bookmarks</button></div>
+      <p id="iq-count" class="caption" style="margin-top:14px"></p>
+      <div id="iq-list"></div>
+    </section>
+
+    <section class="sec" id="more">
+      <h2>Keep going</h2>
+      <div class="links"><a href="index.html">LLD Teaching App<span class="s">Lessons with diagrams, Java code, quizzes and practice</span></a><a href="roadmap.html">Roadmap hub<span class="s">Modules, machine-coding problems and your progress</span></a></div>
+    </section>
+  </main>
+</body>
+</html>

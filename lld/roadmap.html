@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Low-Level Design (LLD) Study Roadmap</title>
+  <meta name="description" content="Hub for low-level design: OOP, SOLID, UML, 22 design patterns, concurrency, the machine-coding playbook and 15 classic machine-coding problems.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
+  <script src="assets/data.js" defer></script>
+  <script src="assets/lessons/manifest.js" defer></script>
+  <script src="assets/roadmap.js" defer></script>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">LLD Study<span class="tag">low-level design · Java</span></span>
+    <nav><a href="index.html">Teaching App</a><a href="roadmap.html" class="active">Roadmap</a><a href="interview.html">Interview Questions</a><a href="../index.html" title="Back to the High-Level Design (HLD) app">← HLD app</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>Low-Level Design (LLD) Study Roadmap</h1>
+    <p class="summary" id="hub-summary">Deepak's hub for low-level design and machine-coding rounds.</p>
+
+    <nav class="toc" aria-label="Contents"><ol>
+      <li><a href="#roadmap">Roadmap at a glance</a></li>
+      <li><a href="#modules">Modules</a></li>
+      <li><a href="#progress">Progress</a></li>
+      <li><a href="#explorer">Topic explorer</a></li>
+      <li><a href="#reuse">Which lessons pay off most</a></li>
+      <li><a href="#framework">Machine-coding round framework</a></li>
+      <li><a href="#uml">UML relationship notation</a></li>
+      <li><a href="#picker">Pattern picker</a></li>
+      <li><a href="#seq">Sample sequence diagram</a></li>
+      <li><a href="#next">How we'll use this hub</a></li>
+      <li><a href="interview.html">VIP interview questions ↗</a></li>
+    </ol></nav>
+
+    <section class="sec" id="roadmap">
+      <h2>Roadmap at a glance</h2>
+      <div class="diagram" id="dg-roadmap"></div>
+      <p>Learn OOP and SOLID first, then UML so you can draw what you design. Patterns come next (creational, structural, behavioral), concurrency in parallel, then the machine-coding playbook and problems from easy to hard. Each problem lists the lessons it builds on.</p>
+    </section>
+
+    <section class="sec" id="modules">
+      <h2>Modules</h2>
+      <p class="caption">Every lesson in order. Written lessons open in the Teaching App; the rest are locked until they're published.</p>
+      <div class="grid3" id="module-cards"></div>
+    </section>
+
+    <section class="sec" id="progress">
+      <h2>Progress</h2>
+      <p class="caption">Saved in this browser (localStorage, keys prefixed <code>lld.</code>). Tick topics in the explorer below or finish lessons in the Teaching App.</p>
+      <p id="progress-lead"></p>
+      <div class="metrics" id="metrics"></div>
+      <div class="card"><div class="legend"><span><i style="background:var(--c0)"></i>Done</span><span><i style="background:var(--other)"></i>To do</span></div><div class="bars" id="progress-bars" style="margin-top:14px"></div></div>
+      <div class="btnrow"><button class="btn" id="reset-progress" type="button">Clear all progress</button></div>
+    </section>
+
+    <section class="sec" id="explorer">
+      <h2>Topic explorer</h2>
+      <p class="caption">Filter, search, then expand a topic for why it matters, key concepts and its links.</p>
+      <div class="controls">
+        <div class="seg" id="track"></div>
+        <label class="field">Module / difficulty<select id="group"></select></label>
+        <label class="field">Search<input type="search" id="q" placeholder="e.g. strategy, volatile, parking"></label>
+        <label class="toggle"><input type="checkbox" id="hide-done"> Hide done</label>
+        <button class="btn" id="reset" type="button">Reset</button>
+      </div>
+      <div class="tablewrap" id="table-wrap"></div>
+      <p id="nomatch" hidden></p>
+      <div id="details"></div>
+    </section>
+
+    <section class="sec" id="reuse">
+      <h2>Which lessons pay off most</h2>
+      <p class="caption">Number of the 15 machine-coding problems that list each lesson as a dependency (top 10).</p>
+      <div class="card"><div class="bars" id="reuse-bars"></div></div>
+      <p>OOP, Strategy, class diagrams and locking show up in most problems, so they are worth learning deeply first.</p>
+    </section>
+
+    <section class="sec" id="framework">
+      <h2>Machine-coding round framework</h2>
+      <div class="diagram" id="dg-framework"></div>
+      <div class="grid2">
+        <div class="card"><ol class="steps" id="fw-steps"></ol></div>
+        <div class="card">
+          <h3>Suggested time split, 90-minute round</h3>
+          <p class="caption">A common rule of thumb, not a fixed rule; some companies run 60 or 120 minutes, so scale it.</p>
+          <div class="bars" id="fw-bars"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="uml">
+      <h2>UML relationship notation</h2>
+      <div class="diagram" id="dg-uml"></div>
+      <div class="tablewrap" id="uml-table"></div>
+    </section>
+
+    <section class="sec" id="picker">
+      <h2>Pattern picker</h2>
+      <p class="caption">Match the smell in your design to the pattern that removes it. Don't add a pattern the problem doesn't need.</p>
+      <div class="tablewrap" id="picker-table"></div>
+    </section>
+
+    <section class="sec" id="seq">
+      <h2>Sample sequence diagram: parking-lot entry</h2>
+      <div class="diagram" id="dg-seq"></div>
+    </section>
+
+    <section class="sec" id="next">
+      <h2>How we'll use this hub</h2>
+      <div class="callout"><span class="lead">Next step</span>Lessons are published in the LLD Teaching App in roadmap order; each topic in the explorer links to its lesson once it is ready, and progress shows up here.</div>
+      <div class="links"><a href="index.html">LLD Teaching App<span class="s">Lesson player, starting with Lesson 1: OOP fundamentals</span></a><a href="interview.html">VIP Interview Questions<span class="s">100+ model answers: OOP, SOLID, patterns, concurrency, Java, machine coding</span></a></div>
+    </section>
+  </main>
+  <a class="btn backtop" href="#">↑ Top</a>
+</body>
+</html>

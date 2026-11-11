@@ -37,6 +37,7 @@ You can also open `index.html` straight from disk. The diagrams need internet ac
 | `assets/roadmap.js` | Roadmap logic: filters, search, progress, charts |
 | `assets/style.css` | Styles, with light and dark mode following the OS setting |
 | `favicon.svg` | Site icon |
+| `lld/` | Low-Level Design (LLD) companion app: its own Teaching App, Roadmap and Interview Questions (`lld/roadmap.html`); progress uses separate `lld.*` localStorage keys |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
 
 ## Dependencies
