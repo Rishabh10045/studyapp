@@ -566,5 +566,93 @@ System.out.println(o.orElseGet(() -> { System.out.println("not printed"); return
     "Return empty collections; use Null Object implementations; `requireNonNullElse` for defaults.",
     "Nullness annotations (JSpecify) with static analysis (NullAway); helpful NPE messages (Java 14+) aid debugging."]);
 
+  var MJ = "Modern Java (9–21)";
+  Q(MJ, "Java 9–17", "Easy", true, "J13", "What are records? What do they generate?", [
+    "Immutable data carriers (Java 16): `record Fare(String route, int amount) {}`.",
+    "Generated: private final fields, canonical constructor, accessors `route()`, `equals`, `hashCode`, `toString`.",
+    "Final, can't extend classes, can implement interfaces; validate in a compact constructor; shallowly immutable."]);
+  Q(MJ, "Java 9–17", "Easy", true, "J13", "What is `var`? Where can't you use it?", [
+    "Local variable type inference (Java 10); still static typing.",
+    "Not for fields, parameters, return types, uninitialised or null-initialised locals, or array initialisers without `new`.",
+    "Use when the type is obvious; `new ArrayList<>()` with var gives `ArrayList<Object>`."]);
+  Q(MJ, "Java 9–17", "Easy", true, "J13", "Switch expressions vs the old switch statement?", [
+    "Arrow labels: no fall-through, comma-separated labels, value produced (`yield` in blocks).",
+    "Expressions must be exhaustive (all enum constants or default).",
+    "Java 14 standard; patterns in switch arrived in Java 21."],
+    { code: `String c = "J";
+int bags = switch (c) { case "F", "J" -> 2; case "Y" -> 1; default -> 0; };
+System.out.println(bags);` });
+  Q(MJ, "Java 9–17", "Medium", true, "J13", "What are sealed classes and why use them?", [
+    "`sealed ... permits A, B` restricts subtypes; each must be final, sealed or non-sealed (Java 17).",
+    "Models a closed set of alternatives with different data (payments, results, events).",
+    "Enables exhaustive pattern switches without default (Java 21)."]);
+  Q(MJ, "Java 9–17", "Medium", false, "J13", "Explain pattern matching for instanceof and flow scoping.", [
+    "`if (o instanceof Fare f)` tests, casts and binds in one step (Java 16).",
+    "`f` is in scope where the match is definitely true: inside the if, after `&&`, after an early return on `!(o instanceof Fare f)`.",
+    "Simplifies equals: `return o instanceof Pnr p && p.code.equals(code);`."]);
+  Q(MJ, "Java 9–17", "Medium", false, "J13", "What are text blocks? Any gotchas?", [
+    "Multi-line string literals with `\"\"\"` (Java 15); incidental indentation removed, quotes unescaped.",
+    "The closing delimiter's position affects indentation and trailing newline.",
+    "`\\` joins lines, `\\s` keeps a space; use `formatted()` for values."]);
+  Q(MJ, "Java 9–17", "Medium", false, "J13", "Can records be JPA entities? Where do they fit in Spring apps?", [
+    "Not as entities: JPA needs a no-arg constructor, mutable state and proxyable (non-final) classes.",
+    "Great for DTOs, request/response bodies, projections, events, value objects, configuration properties (`@ConfigurationProperties` records).",
+    "Jackson and Spring bind records natively."]);
+  Q(MJ, "Java 9–17", "Easy", false, "J13", "What are helpful NullPointerExceptions?", [
+    "Since Java 14 (default from 15), NPE messages say what was null: `because the return value of \"Booking.lead()\" is null`.",
+    "Local variable names appear with debug info (`-g`), else `<localN>`.",
+    "Speeds up debugging chained calls."]);
+  Q(MJ, "Java 9–17", "Medium", false, "J13", "Name useful API additions from Java 9 to 17.", [
+    "`List.of/Set.of/Map.of/copyOf`, `Stream.toList`, `takeWhile/dropWhile`, `Collectors.teeing`.",
+    "`String.isBlank/strip/lines/repeat/formatted/indent/transform`, `Files.readString/writeString`.",
+    "`Optional.or/stream/isEmpty/orElseThrow`, `HttpClient`, private interface methods, `java File.java`."]);
+  Q(MJ, "Java 9–17", "Hard", false, "J13", "What breaks when upgrading from Java 8 to 17?", [
+    "Removed modules (JAXB, `javax.annotation`, CORBA), strong encapsulation of JDK internals (illegal reflective access fails), removed GC flags (CMS, PermGen).",
+    "Old libraries (Lombok, Mockito, ASM, bytecode tools) need upgrades; Spring Boot 3 adds `javax` → `jakarta`.",
+    "Plan: upgrade libs, compile with `--release 17`, OpenRewrite recipes, full tests and canary."]);
+
+  Q(MJ, "Java 21", "Medium", true, "J14", "What is pattern matching for switch (Java 21)?", [
+    "`switch` on any type with type patterns (`case Card c`), guards (`when`), record patterns and `case null`.",
+    "Cases are tried top to bottom; dominated labels are compile errors; pattern switches must be exhaustive.",
+    "Replaces instanceof chains and many visitor implementations."],
+    { code: `Object o = 4850;
+String r = switch (o) { case Integer i when i > 1000 -> "big"; case Integer i -> "small"; default -> "other"; };
+System.out.println(r);` });
+  Q(MJ, "Java 21", "Medium", true, "J14", "How do sealed types and switch work together?", [
+    "A switch covering all permitted subtypes of a sealed type is exhaustive without default.",
+    "Adding a subtype breaks compilation of every such switch, showing what to update.",
+    "Avoid default there; a stale compiled switch throws MatchException at runtime."]);
+  Q(MJ, "Java 21", "Medium", false, "J14", "What are record patterns?", [
+    "Patterns that match a record and bind its components: `if (o instanceof Point(var x, var y))`.",
+    "They nest: `case Booking(var p, Flight(var no, var route), var pax)`.",
+    "Java 22 adds `_` to ignore components."]);
+  Q(MJ, "Java 21", "Easy", true, "J14", "What are sequenced collections?", [
+    "Java 21 `SequencedCollection/Set/Map`: `getFirst`, `getLast`, `addFirst/Last`, `removeFirst/Last`, `reversed()`; maps add `firstEntry`, `lastEntry`, `putFirst`, `pollFirstEntry`.",
+    "Implemented by List, Deque, LinkedHashSet, SortedSet, LinkedHashMap, SortedMap.",
+    "`reversed()` is a view."]);
+  Q(MJ, "Java 21", "Easy", true, "J14", "What are virtual threads?", [
+    "Lightweight JVM-managed threads (Java 21) mounted on a few carrier OS threads.",
+    "Blocking I/O unmounts them, so millions can wait cheaply; same Thread/Executor APIs.",
+    "Use one per task (`newVirtualThreadPerTaskExecutor`), for I/O-bound concurrency."]);
+  Q(MJ, "Java 21", "Hard", true, "J14", "What is pinning in virtual threads and how do you avoid it?", [
+    "In Java 21, blocking while inside `synchronized` (or native code) keeps the virtual thread mounted, occupying its carrier.",
+    "Detect with `-Djdk.tracePinnedThreads=full` or JFR `jdk.VirtualThreadPinned`.",
+    "Use `ReentrantLock` around blocking calls or Java 24+, where synchronized no longer pins (JEP 491)."]);
+  Q(MJ, "Java 21", "Medium", false, "J14", "When should you not use virtual threads?", [
+    "CPU-bound work (no extra cores); pooling them (create per task); limiting concurrency by pool size (use a Semaphore).",
+    "Heavy ThreadLocal caches multiply per thread.",
+    "Downstream limits (DB pools, rate limits) still apply."]);
+  Q(MJ, "Java 21", "Easy", false, "J14", "Which Java 21 features were previews, and what happened to them?", [
+    "Unnamed patterns/variables `_` (final in 22), scoped values (final in 25), structured concurrency (still preview in 25), string templates (withdrawn in 23).",
+    "Previews need `--enable-preview` and can change; avoid in production."]);
+  Q(MJ, "Java 21", "Medium", false, "J14", "What does `case null` change in a switch?", [
+    "Historically `switch (null)` throws NPE; that remains the default.",
+    "`case null ->` (or `case null, default ->`) handles null explicitly in pattern switches.",
+    "Keeps null handling visible instead of a separate if before the switch."]);
+  Q(MJ, "Java 21", "Hard", false, "J14", "Sealed types + pattern switch vs the visitor pattern?", [
+    "Visitor: double dispatch, boilerplate, adding types touches every visitor.",
+    "Sealed + switch: one function per operation, compiler-checked exhaustiveness, record patterns for nested data.",
+    "Both fit closed hierarchies; open, plugin-style hierarchies favour classic polymorphism."]);
+
   window.JAVA_IQ = QS;
 })();
