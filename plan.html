@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>30-Day Interview Plan · Study site</title>
+  <meta name="description" content="Deepak's 30-day daily plan (12 Nov – 11 Dec 2026): DSA, HLD, LLD, Java, multithreading, Spring Boot, Spring AI and FDE prep, with checkboxes and progress.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    .day { border: 1px solid var(--border); border-radius: var(--radius); padding: 0 16px; scroll-margin-top: 72px; }
+    .day + .day { margin-top: 8px; }
+    .day.today { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-subtle); }
+    .day.past:not(.today) summary .dt { color: var(--text-3); }
+    .day summary { cursor: pointer; padding: 12px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; list-style: none; }
+    .day summary::-webkit-details-marker { display: none; }
+    .day summary::before { content: "▸"; color: var(--text-3); }
+    .day[open] summary::before { content: "▾"; }
+    .day summary .dn { font-family: var(--mono); font-size: 12px; color: var(--text-3); min-width: 46px; }
+    .day summary .dt { font-weight: 600; min-width: 150px; }
+    .day summary .fc { flex: 1; color: var(--text-2); font-size: 14px; min-width: 220px; }
+    .day .body { padding: 0 0 16px; }
+    .blk td:first-child { width: 34px; }
+    .blk input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--c0); cursor: pointer; }
+    .blk tr.done td:not(:first-child) { opacity: 0.55; }
+    .blk tr.done .bt { text-decoration: line-through; }
+    .blk .bt { font-weight: 600; }
+    .blk .bd { color: var(--text-2); margin-top: 2px; }
+    .blk .bl { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+    .blk .bl .soon { color: var(--text-3); font-size: 12px; }
+    td.when { white-space: nowrap; font-family: var(--mono); font-size: 13px; color: var(--text-2); }
+    .wk.cur { border-color: var(--accent); }
+    .wk ul { font-size: 14px; color: var(--text-2); }
+    input[type=time] { font: inherit; font-size: 15px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg); color: var(--text); }
+    .t-dsa { background: #e8f0fe; color: #1d4ed8; } .t-core, .t-design { background: var(--success-bg); color: var(--success); }
+    .t-hands, .t-project { background: var(--warning-bg); color: var(--warning); } .t-mock, .t-fde { background: var(--danger-bg); color: var(--danger); }
+    @media (prefers-color-scheme: dark) { .t-dsa { background: #1c2a45; color: #7aa7ff; } }
+  </style>
+  <script src="assets/lessons/manifest.js" defer></script>
+  <script src="lld/assets/lessons/manifest.js" defer></script>
+  <script src="java/assets/lessons/manifest.js" defer></script>
+  <script src="assets/plan-data.js" defer></script>
+  <script src="assets/plan.js" defer></script>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">HLD Study</span>
+    <nav><a href="index.html">Teaching App</a><a href="roadmap.html">Roadmap</a><a href="lld/roadmap.html">LLD</a><a href="java/roadmap.html">Java</a><a href="java/fde.html">FDE</a><a href="plan.html" class="active">Daily Plan</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>30-Day Interview Plan</h1>
+    <p class="summary">Deepak's day-by-day plan from Thursday 12 Nov to Friday 11 Dec 2026, aimed at SDE/backend and Forward Deployed Engineer interviews. Weekdays take about 3.5 hours, weekends about 7, and the last day about 2. Every day has DSA, a core lesson, hands-on coding and interview questions. Weekends add a 90-minute machine-coding round, an end-to-end HLD design and a mock.</p>
+
+    <nav class="toc" aria-label="Contents"><ol>
+      <li><a href="#today">Today</a></li>
+      <li><a href="#progress">Progress</a></li>
+      <li><a href="#weeks">Week summaries</a></li>
+      <li><a href="#days">Day by day</a></li>
+      <li><a href="#how">How to use this plan</a></li>
+    </ol></nav>
+
+    <section class="sec" id="today">
+      <h2>Today</h2>
+      <p class="caption" id="today-caption"></p>
+      <div id="today-card"></div>
+    </section>
+
+    <section class="sec" id="progress">
+      <h2>Progress</h2>
+      <p class="caption">Saved in this browser (localStorage). Tick blocks in Today or Day by day.</p>
+      <div class="metrics" id="metrics"></div>
+      <div class="card"><div class="bars" id="bars"></div></div>
+      <div class="btnrow"><button class="btn" id="reset" type="button">Clear plan progress</button></div>
+    </section>
+
+    <section class="sec" id="weeks">
+      <h2>Week summaries</h2>
+      <p class="caption">Java lessons follow the order they are being written: J03–J14 in weeks 1–2, multithreading in weeks 2–3, Spring Boot and Spring AI in weeks 3–4.</p>
+      <div class="grid2" id="week-cards"></div>
+    </section>
+
+    <section class="sec" id="days">
+      <h2>Day by day</h2>
+      <p class="caption">Clock times start from the times you set here; take a 5-minute break between blocks.</p>
+      <div class="controls">
+        <div class="seg" id="view"></div>
+        <label class="field">Weekday start<input type="time" id="start-wd"></label>
+        <label class="field">Weekend start<input type="time" id="start-we"></label>
+        <button class="btn" id="jump" type="button">Jump to today</button>
+      </div>
+      <div id="day-list"></div>
+    </section>
+
+    <section class="sec" id="how">
+      <h2>How to use this plan</h2>
+      <ol class="steps">
+        <li><span class="t">Do the blocks in order and keep to the timer.</span><div class="dt">An unfinished DSA problem goes on a "flagged" list for the weekly revision; don't let it eat the lesson block.</div></li>
+        <li><span class="t">If a lesson shows "not written yet", swap it.</span><div class="dt">Java and Spring lessons are still being written in this order. Do the next ready lesson and come back.</div></li>
+        <li><span class="t">Only 3 hours on a weekday?</span><div class="dt">Cut DSA to 45 minutes and drop the interview-questions block. Never drop hands-on coding.</div></li>
+        <li><span class="t">Fell behind?</span><div class="dt">Use the weekend notes block to catch up. In week 4, mocks and the Spring AI project matter more than finishing every lesson.</div></li>
+      </ol>
+      <div class="links" style="margin-top:16px"><a href="roadmap.html">HLD roadmap<span class="s">Fundamentals, design problems, interview framework</span></a><a href="lld/roadmap.html">LLD roadmap<span class="s">Patterns, concurrency, machine coding</span></a><a href="java/roadmap.html">Java &amp; Spring Boot roadmap<span class="s">Java, multithreading, Spring Boot, Spring AI</span></a><a href="java/fde.html">FDE roadmap<span class="s">Role, skills, decomposition practice</span></a></div>
+    </section>
+  </main>
+  <a class="btn backtop" href="#">↑ Top</a>
+</body>
+</html>
