@@ -128,7 +128,7 @@
     renderSlide();
     var w = $("widget");
     if (LES.widget) {
-      w.hidden = false; $("widget-title").textContent = LES.widget.heading; $("widget-caption").textContent = LES.widget.caption || "";
+      w.hidden = false; $("widget-title").textContent = LES.widget.heading; $("widget-caption").innerHTML = md(LES.widget.caption || "");
       $("widget-caption").hidden = !LES.widget.caption;
       var body = $("widget-body"); body.innerHTML = "";
       S.widgets[CUR.code] = S.widgets[CUR.code] || {};

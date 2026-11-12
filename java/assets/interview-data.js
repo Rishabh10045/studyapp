@@ -262,5 +262,171 @@ System.out.println(f());   // 1` });
     "`scheduleAtFixedRate` stops all future runs after an exception, also recorded only in the Future.",
     "Fix: catch and log inside tasks, call `get()`, or use `execute()` with an `UncaughtExceptionHandler`."]);
 
+  var GE = "Generics";
+  Q(GE, "Basics", "Easy", true, "J06", "Why were generics added to Java?", [
+    "Compile-time type safety: wrong element types are rejected by the compiler instead of failing with ClassCastException at run time.",
+    "No manual casts; reusable type-safe code (`Box<T>`, `Map<K,V>`); more expressive APIs.",
+    "Implemented with erasure for backward compatibility with pre-Java 5 code."]);
+  Q(GE, "Erasure", "Medium", true, "J06", "What is type erasure? Name three things it prevents.", [
+    "The compiler checks types, then replaces type parameters with their bounds, inserts casts and bridge methods; the JVM sees raw types.",
+    "Prevents `new T()`, `new T[n]`, `instanceof List<String>`, overloads differing only in type arguments, primitive type arguments.",
+    "Workarounds: `Class<T>` tokens, `Supplier<T>`, `IntFunction<T[]>`, super type tokens."]);
+  Q(GE, "Wildcards", "Medium", true, "J06", "Explain `? extends` vs `? super` (PECS).", [
+    "`? extends T`: an unknown subtype of T; you can read T's but not add (except null). Producer.",
+    "`? super T`: an unknown supertype of T; you can add T's but only read Objects. Consumer.",
+    "Producer Extends, Consumer Super; e.g. `Collections.copy(List<? super T> dest, List<? extends T> src)`."]);
+  Q(GE, "Wildcards", "Easy", true, "J06", "Why isn't `List<Integer>` a `List<Number>`? Why is `Integer[]` an `Object[]`?", [
+    "Generics are invariant: otherwise you could add a Double through the `List<Number>` reference into a list of Integers.",
+    "Arrays are covariant for historical reasons and check stores at run time (ArrayStoreException).",
+    "Use `List<? extends Number>` for a read-only polymorphic view."]);
+  Q(GE, "Wildcards", "Medium", false, "J06", "List<?> vs List<Object> vs raw List?", [
+    "`List<Object>`: a list that holds any objects; but a `List<String>` is not assignable to it.",
+    "`List<?>`: a list of some unknown type; any `List<X>` is assignable; read Object, add only null; still type-checked.",
+    "Raw `List`: generics turned off, unchecked warnings, heap pollution risk; legacy only."]);
+  Q(GE, "Bounds", "Medium", false, "J06", "What does `<T extends Comparable<? super T>>` mean and why the `super`?", [
+    "T must be comparable to T or to one of its supertypes.",
+    "Needed for types that inherit `compareTo` from a supertype, e.g. `LocalDate implements Comparable<ChronoLocalDate>`, or a subclass of a Comparable class.",
+    "Used by `Collections.sort`, `Collections.max`, `Stream.sorted()`."]);
+  Q(GE, "Erasure", "Hard", false, "J06", "What are bridge methods?", [
+    "Synthetic methods javac generates so that a class implementing `Comparable<Fare>` (with `compareTo(Fare)`) still overrides the erased `compareTo(Object)`.",
+    "The bridge casts and delegates: `compareTo(Object o) { return compareTo((Fare) o); }`.",
+    "Visible with `javap -p` or `Method.isBridge()`; also generated for covariant returns."]);
+  Q(GE, "Erasure", "Hard", false, "J06", "How do TypeReference / ParameterizedTypeReference recover generic types at run time?", [
+    "They're instantiated as anonymous subclasses (`new TypeReference<List<Order>>() {}`).",
+    "A subclass's generic superclass, including its type arguments, is stored in the class file and readable via `getGenericSuperclass()`.",
+    "The library extracts `List<Order>` from that ParameterizedType (super type token)."]);
+
+  var CO = "Collections";
+  Q(CO, "Framework", "Easy", true, "J07", "Explain the Collections Framework hierarchy.", [
+    "`Iterable` → `Collection` → `List` (ordered, indexed), `Set` (unique), `Queue`/`Deque` (processing order).",
+    "`Map` is separate (key → value), not a `Collection`.",
+    "Common implementations: ArrayList, LinkedList, HashSet, LinkedHashSet, TreeSet, ArrayDeque, PriorityQueue, HashMap, LinkedHashMap, TreeMap."]);
+  Q(CO, "Lists", "Easy", true, "J07", "ArrayList vs LinkedList?", [
+    "ArrayList: dynamic array, O(1) get, amortised O(1) append, O(n) middle insert/remove, compact.",
+    "LinkedList: doubly linked nodes, O(1) at ends/iterator, O(n) get(i), much more memory, poor locality.",
+    "Default to ArrayList; ArrayDeque for queues/stacks."]);
+  Q(CO, "Lists", "Medium", true, "J07", "How does ArrayList grow internally?", [
+    "Backed by `Object[] elementData`; `new ArrayList<>()` starts with a shared empty array and allocates 10 on first add.",
+    "When full: new capacity = old + old/2 (1.5×), elements copied with `Arrays.copyOf`.",
+    "Amortised O(1) per add; pre-size with `new ArrayList<>(n)` / `ensureCapacity`."]);
+  Q(CO, "Lists", "Medium", false, "J07", "Difference between `List.of`, `Collections.unmodifiableList` and `Arrays.asList`?", [
+    "`List.of`/`copyOf`: immutable, no nulls, independent data.",
+    "`unmodifiableList`: read-only **view**; changes to the backing list are visible.",
+    "`Arrays.asList`: fixed-size, write-through to the array; `set` works, `add`/`remove` throw UnsupportedOperationException."]);
+  Q(CO, "Queues", "Easy", true, "J07", "Why prefer ArrayDeque over Stack?", [
+    "`Stack` extends `Vector`: synchronized (overhead) and exposes index-based methods that break stack semantics.",
+    "`ArrayDeque` is a fast circular array implementing `Deque`: `push`/`pop`/`peek` in O(1) amortised.",
+    "ArrayDeque doesn't allow nulls."]);
+  Q(CO, "Queues", "Medium", true, "J07", "How is PriorityQueue implemented? What are its complexities?", [
+    "An array-backed binary min-heap (natural order or Comparator); index math: children 2i+1, 2i+2.",
+    "peek O(1); offer/poll O(log n) via sift up/down; remove(Object)/contains O(n).",
+    "Iteration order isn't sorted; not thread-safe (PriorityBlockingQueue)."]);
+  Q(CO, "Queues", "Medium", true, "J07", "Find the K largest elements in a large stream.", [
+    "Maintain a min-heap of size K: offer each element, poll when size > K.",
+    "O(n log K) time, O(K) memory; works for unbounded streams.",
+    "For K smallest use a max-heap; for small static data, sorting is simpler."], { code: `PriorityQueue<Integer> heap = new PriorityQueue<>();
+for (int v : new int[]{5, 1, 9, 3, 7, 8}) { heap.offer(v); if (heap.size() > 3) heap.poll(); }
+System.out.println(heap.stream().sorted(Comparator.reverseOrder()).toList());   // [9, 8, 7]` });
+  Q(CO, "Queues", "Easy", false, "J07", "offer/poll/peek vs add/remove/element?", [
+    "Same operations; `add`/`remove`/`element` throw (IllegalStateException / NoSuchElementException) on failure.",
+    "`offer`/`poll`/`peek` return false/null instead.",
+    "Prefer the special-value forms, especially with bounded queues."]);
+
+  Q("Collections", "Maps", "Easy", true, "J08", "How does HashMap work internally (put and get)?", [
+    "An array of buckets (power-of-two length); each bucket is a chain of nodes (hash, key, value, next) or a red-black tree.",
+    "`hash = h ^ (h >>> 16)`, index `= hash & (n - 1)`; within the bucket, match by hash then `==` or `equals`.",
+    "put replaces the value for an existing key or appends a node; resizes when size > capacity × load factor (0.75).",
+    "get computes the same index and walks the bucket; average O(1)."]);
+  Q("Collections", "Maps", "Medium", true, "J08", "What is the load factor and what happens on resize?", [
+    "Load factor (default 0.75) sets threshold = capacity × LF; exceeding it doubles the table.",
+    "Each node either stays at index i or moves to i + oldCap, decided by the bit `hash & oldCap`: no rehashing of keys.",
+    "Resize is O(n); pre-size with `HashMap.newHashMap(expected)` (Java 19+) to avoid it."]);
+  Q("Collections", "Maps", "Medium", true, "J08", "What happens when many keys collide? What changed in Java 8?", [
+    "Colliding keys share a bucket chain; lookups degrade toward O(n).",
+    "Since Java 8, a chain of ≥ 8 nodes becomes a red-black tree (if the table has ≥ 64 buckets, else it resizes); it reverts at ≤ 6.",
+    "Worst case becomes O(log n), mitigating hash-flooding attacks."]);
+  Q("Collections", "Maps", "Easy", true, "J08", "HashMap vs LinkedHashMap vs TreeMap?", [
+    "HashMap: O(1) average, no order.",
+    "LinkedHashMap: insertion or access order via a linked list; LRU caches.",
+    "TreeMap: sorted keys, O(log n), NavigableMap (floor/ceiling/ranges); no null keys with natural ordering."]);
+  Q("Collections", "Maps", "Medium", true, "J08", "Build an LRU cache using the JDK.", [
+    "`new LinkedHashMap<>(16, 0.75f, true)` (access order) and override `removeEldestEntry` to return `size() > capacity`.",
+    "From scratch: HashMap<K, Node> + doubly linked list with sentinels; O(1) get/put.",
+    "Not thread-safe; for concurrency use Caffeine or a locked wrapper."],
+    { code: `class Lru<K, V> extends LinkedHashMap<K, V> {
+    private final int cap;
+    Lru(int cap) { super(16, 0.75f, true); this.cap = cap; }
+    @Override protected boolean removeEldestEntry(Map.Entry<K, V> e) { return size() > cap; }
+}` });
+  Q("Collections", "Sets", "Easy", true, "J08", "How is HashSet implemented? How does it detect duplicates?", [
+    "Backed by a HashMap<E, Object> with a shared dummy value; `add(e)` returns `map.put(e, PRESENT) == null`.",
+    "Duplicates are detected through `hashCode` (bucket) then `equals`: broken equals/hashCode break the set.",
+    "LinkedHashSet uses LinkedHashMap; TreeSet uses TreeMap (compareTo/comparator decide uniqueness)."]);
+  Q("Collections", "Maps", "Medium", false, "J08", "Explain `merge`, `compute`, `computeIfAbsent` and `getOrDefault`.", [
+    "`merge(k, v, f)`: put v if absent, else put f(old, v); null result removes. Counting: `merge(k, 1, Integer::sum)`.",
+    "`computeIfAbsent(k, fn)`: create the value lazily (multimaps: `computeIfAbsent(k, x -> new ArrayList<>()).add(v)`).",
+    "`compute(k, (key, old) -> ...)`: general update; `getOrDefault` doesn't insert.",
+    "Don't modify the same map inside the callbacks."]);
+  Q("Collections", "Maps", "Medium", false, "J08", "What does TreeMap's NavigableMap API offer?", [
+    "`floorKey/ceilingKey/lowerKey/higherKey` (≤, ≥, <, >), `firstEntry/lastEntry`, `pollFirstEntry`.",
+    "Range views: `headMap`, `tailMap`, `subMap`, `descendingMap`, all O(log n) to locate.",
+    "Use for bands, schedules, time-versioned values, and \"nearest\" queries."]);
+  Q("Collections", "Maps", "Hard", false, "J08", "EnumMap, IdentityHashMap and WeakHashMap: when would you use each?", [
+    "EnumMap: enum keys in an array indexed by ordinal; compact, fast, ordered by declaration.",
+    "IdentityHashMap: compares keys with `==`; graph traversal / serialization bookkeeping.",
+    "WeakHashMap: keys weakly referenced so entries vanish after the key is GC'd; metadata attached to objects, not general caches (values must not reference keys)."]);
+  Q("Collections", "Maps", "Easy", false, "J08", "Which maps allow null keys or values?", [
+    "HashMap/LinkedHashMap: one null key, null values.",
+    "TreeMap: null values; null key only with a comparator that handles it.",
+    "ConcurrentHashMap, Hashtable, Map.of/copyOf: no nulls (NPE)."]);
+
+  var IC = "Iteration & concurrent collections";
+  Q(IC, "Iteration", "Easy", true, "J09", "What is ConcurrentModificationException? How do you avoid it?", [
+    "Thrown by fail-fast iterators when the collection is structurally modified other than through the iterator (`modCount != expectedModCount`).",
+    "Happens in single-threaded code: `list.remove(x)` inside a for-each.",
+    "Avoid with `Iterator.remove()`, `removeIf`, collecting then removing, or iterating a copy; concurrent collections don't throw it."]);
+  Q(IC, "Iteration", "Easy", true, "J09", "Fail-fast vs fail-safe iterators?", [
+    "Fail-fast (`ArrayList`, `HashMap`): throw CME on detected modification, best effort only.",
+    "Snapshot (`CopyOnWriteArrayList`): iterate an immutable copy, never throw, don't see later changes, no `remove()`.",
+    "Weakly consistent (`ConcurrentHashMap`): never throw, may reflect concurrent changes, each element at most once."]);
+  Q(IC, "Iteration", "Medium", false, "J09", "Why does removing the second-to-last element in a for-each over an ArrayList not throw?", [
+    "`hasNext()` is `cursor != size`; after the removal the cursor equals the new size, so the loop exits before `next()` checks `modCount`.",
+    "The last element is silently skipped: proof that fail-fast is best-effort.",
+    "HashMap-based iterators do throw here because their `hasNext()` uses the next node, not size."]);
+  Q(IC, "ConcurrentHashMap", "Medium", true, "J09", "How does ConcurrentHashMap work internally (Java 8+)?", [
+    "Node table like HashMap; `get` uses volatile reads with no locking.",
+    "Put into an empty bin: CAS; into a non-empty bin: `synchronized` on the bin's first node.",
+    "Bins treeify at 8; resize is cooperative via `ForwardingNode`s; size uses striped counter cells.",
+    "Java 7 used 16 `Segment` locks instead."]);
+  Q(IC, "ConcurrentHashMap", "Easy", true, "J09", "Why doesn't ConcurrentHashMap allow null keys or values?", [
+    "`get(k) == null` must mean absent; with concurrent writers you can't disambiguate with a follow-up `containsKey`.",
+    "Null also signals \"remove\" in `compute`/`merge` functions.",
+    "Use sentinels, Optional or `getOrDefault`."]);
+  Q(IC, "ConcurrentHashMap", "Medium", true, "J09", "HashMap vs Hashtable vs synchronizedMap vs ConcurrentHashMap?", [
+    "HashMap: not thread-safe, nulls allowed.",
+    "Hashtable / synchronizedMap: one lock for all operations; iteration and compound actions need manual locking.",
+    "ConcurrentHashMap: lock-free reads, fine-grained writes, atomic compound methods, weakly consistent iterators, no nulls.",
+    "Prefer ConcurrentHashMap for shared maps."]);
+  Q(IC, "ConcurrentHashMap", "Medium", true, "J09", "Is a ConcurrentHashMap enough to make a counter thread-safe?", [
+    "Only if you use its atomic methods: `get` then `put` is two operations and loses updates.",
+    "Use `merge(k, 1, Integer::sum)`, `compute`, or `computeIfAbsent(k, x -> new LongAdder()).increment()`.",
+    "Same for check-then-act: `putIfAbsent`/`computeIfAbsent` instead of `containsKey` + `put`."],
+    { code: `ConcurrentHashMap<String, Integer> hits = new ConcurrentHashMap<>();
+hits.merge("/search", 1, Integer::sum);
+hits.computeIfAbsent("/book", k -> 0);
+System.out.println(hits);` });
+  Q(IC, "ConcurrentHashMap", "Hard", false, "J09", "What should you avoid inside `computeIfAbsent`/`compute` on a ConcurrentHashMap?", [
+    "The function runs while the bin is locked: no slow I/O or blocking calls (they stall other writers to that bin).",
+    "Don't modify the same map from inside (can deadlock or throw `IllegalStateException: Recursive update`).",
+    "For slow loads, store a `CompletableFuture` per key or use Caffeine."]);
+  Q(IC, "Concurrent collections", "Medium", false, "J09", "When would you use CopyOnWriteArrayList?", [
+    "Read-mostly, small lists iterated far more than modified: listeners, subscribers, config rules.",
+    "Writes copy the whole array (O(n)); iterators are snapshots that never throw and don't support remove.",
+    "Avoid for large or write-heavy lists."]);
+  Q(IC, "Concurrent collections", "Medium", false, "J09", "Name the main BlockingQueue implementations and their uses.", [
+    "`ArrayBlockingQueue` (bounded FIFO, backpressure), `LinkedBlockingQueue` (optionally bounded; default unbounded), `PriorityBlockingQueue`, `DelayQueue` (expiry), `SynchronousQueue` (hand-off), `LinkedTransferQueue`.",
+    "`put`/`take` block; `offer`/`poll` with timeouts don't block forever.",
+    "Prefer bounded queues in services to avoid OOM under overload."]);
+
   window.JAVA_IQ = QS;
 })();
