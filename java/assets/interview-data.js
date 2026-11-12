@@ -1950,5 +1950,151 @@ System.out.printf("boxed: %,d bytes, primitive: %,d bytes%n", b1 - b0, tmx.getTh
     "Event sources keep strong references to listeners; captured variables and the enclosing instance (this$0 in inner/anonymous classes) stay alive.",
     "Unregister in finally/close, return AutoCloseable subscriptions, use static nested classes, or weak listeners where the API supports them."]);
 
+  Q(SB, "Security", "Easy", true, "S08", "How does Spring Security work internally?", [
+    "A DelegatingFilterProxy hands requests to FilterChainProxy, which selects the first matching SecurityFilterChain.",
+    "Its ordered filters handle CORS, CSRF, authentication (bearer token, form, basic), exception translation and authorisation.",
+    "The authenticated user is kept in the thread-bound SecurityContext; failures become 401 or 403."]);
+  Q(SB, "Security", "Easy", true, "S08", "What is the difference between authentication and authorisation?", [
+    "Authentication verifies identity (who you are): passwords, tokens, certificates.",
+    "Authorisation decides access (what you may do): roles, authorities, ownership rules.",
+    "Failing authentication gives 401; failing authorisation gives 403."]);
+  Q(SB, "Security", "Easy", true, "S08", "How should passwords be stored?", [
+    "Only as slow, salted, adaptive hashes: bcrypt, scrypt, argon2 or PBKDF2.",
+    "Use DelegatingPasswordEncoder so hashes carry an {id} prefix and can be migrated.",
+    "Never plain text, reversible encryption or fast hashes like MD5/SHA-256."],
+    { code: `PasswordEncoder enc = new BCryptPasswordEncoder();
+String a = enc.encode("pw"), b = enc.encode("pw");
+System.out.println("different hashes: " + !a.equals(b) + ", both verify: " + (enc.matches("pw", a) && enc.matches("pw", b)));` });
+  Q(SB, "Security", "Medium", true, "S08", "How do you secure a REST API with JWT in Spring Boot?", [
+    "Add spring-boot-starter-oauth2-resource-server and set spring.security.oauth2.resourceserver.jwt.issuer-uri (or jwk-set-uri).",
+    "Configure a stateless chain with oauth2ResourceServer(jwt), authorizeHttpRequests rules and CSRF off for header-based auth.",
+    "Map claims to authorities with JwtAuthenticationConverter; validate audience; keep tokens short-lived."]);
+  Q(SB, "Security", "Medium", true, "S08", "What is the structure of a JWT and what makes it secure?", [
+    "header.payload.signature, Base64url-encoded; the payload is readable by anyone.",
+    "Integrity comes from the signature (RS256/ES256 with the issuer's private key, verified with its public key).",
+    "Validators must check exp/nbf, iss and aud; secrets must never go in claims."],
+    { code: `String payload = Base64.getUrlEncoder().withoutPadding().encodeToString("{\\"sub\\":\\"asha\\",\\"roles\\":[\\"USER\\"]}".getBytes());
+System.out.println("anyone can decode: " + new String(Base64.getUrlDecoder().decode(payload)));` });
+  Q(SB, "Security", "Medium", true, "S08", "Explain CSRF and when you can disable protection.", [
+    "Cross-site request forgery makes a victim's browser send a state-changing request with its cookies.",
+    "Spring requires a secret CSRF token for unsafe methods.",
+    "Disable only for stateless APIs authenticated by headers (bearer tokens); keep it for session/cookie apps."]);
+  Q(SB, "Security", "Medium", true, "S08", "What is CORS and how do you configure it with Spring Security?", [
+    "A browser mechanism controlling which other origins may call your API (preflight OPTIONS with Origin headers).",
+    "Configure via http.cors() with a CorsConfigurationSource so preflights are handled before authentication.",
+    "List exact origins; it is not an access-control mechanism, since non-browser clients ignore it."]);
+  Q(SB, "Security", "Medium", false, "S08", "hasRole vs hasAuthority?", [
+    "hasRole(\"ADMIN\") checks for the authority ROLE_ADMIN (prefix added).",
+    "hasAuthority(\"orders:write\") checks the exact string, e.g. JWT scopes become SCOPE_x.",
+    "Mixing them up silently denies access."]);
+  Q(SB, "Security", "Hard", true, "S08", "How do you implement ownership checks (prevent IDOR)?", [
+    "Enable method security and use @PreAuthorize(\"#ownerId == authentication.name\") or a bean (@guard.canRead(#id)) on service methods.",
+    "@PostAuthorize can check the returned object; @PostFilter filters collections.",
+    "Or enforce in queries (where owner = :currentUser). Remember proxies don't apply to self-invocation."]);
+  Q(SB, "Security", "Hard", false, "S08", "Explain OAuth2 roles and the authorisation code flow with PKCE.", [
+    "Roles: resource owner, client, authorisation server, resource server; OIDC adds an ID token for login.",
+    "Client redirects to the AS with a code_challenge; the user logs in; the AS redirects back with a code.",
+    "Client exchanges code + code_verifier for tokens; calls the API with the access token, which validates it.",
+    "Client credentials is used for service-to-service; password and implicit grants are deprecated."]);
+
+  Q(SB, "Testing", "Easy", true, "S09", "What is the difference between @SpringBootTest and @WebMvcTest?", [
+    "@SpringBootTest starts the full application context (optionally a real server with RANDOM_PORT).",
+    "@WebMvcTest is a slice: controllers, advice, filters, Jackson, validation and security only; services must be mocked with @MockitoBean.",
+    "Slices are faster and more focused; use full-context tests for a few end-to-end paths."]);
+  Q(SB, "Testing", "Easy", true, "S09", "@Mock vs @MockitoBean (@MockBean)?", [
+    "@Mock creates a Mockito mock for plain unit tests, no Spring involved.",
+    "@MockitoBean replaces or adds a bean inside the Spring test context (Boot 3.4+; @MockBean is deprecated).",
+    "@MockitoBean changes the context cache key, so different sets create new contexts."]);
+  Q(SB, "Testing", "Easy", true, "S09", "How do you test a REST controller in Spring Boot?", [
+    "With MockMvc: @WebMvcTest(Controller.class) + @MockitoBean for dependencies, or standalone setup.",
+    "Assert status, headers and JSON via jsonPath; test validation errors and exception handlers.",
+    "Include security rules with @Import of the security config and @WithMockUser."],
+    { code: `@RestController class Hi { @GetMapping("/hi") Map<String, String> hi() { return Map.of("msg", "namaste"); } }
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new Hi()).build();
+mvc.perform(get("/hi")).andExpect(status().isOk()).andExpect(jsonPath("$.msg").value("namaste"));
+System.out.println("contract holds");` });
+  Q(SB, "Testing", "Medium", true, "S09", "What does @DataJpaTest provide and what should you test with it?", [
+    "JPA, Spring Data repositories, an embedded (or replaced) DataSource and TestEntityManager; each test is transactional and rolled back.",
+    "Test custom queries, mappings, constraints and fetch behaviour; flush() and clear() before asserting.",
+    "Use Testcontainers with replace = NONE to run against the production database engine."]);
+  Q(SB, "Testing", "Medium", true, "S09", "How does Spring's test context caching work?", [
+    "Contexts are cached per JVM by merged configuration (classes, profiles, properties, customizers such as mocked beans).",
+    "Test classes with the same key reuse the context; different keys build new ones; @DirtiesContext evicts.",
+    "Keep configurations consistent to keep suites fast."]);
+  Q(SB, "Testing", "Medium", true, "S09", "What is Testcontainers and why use it with Spring Boot?", [
+    "A library that starts real dependencies (Postgres, Kafka, Redis) in Docker for tests.",
+    "@ServiceConnection (Boot 3.1+) wires connection details automatically.",
+    "It catches dialect, migration and driver issues that H2 or mocks hide; share containers to limit start-up cost."]);
+  Q(SB, "Testing", "Medium", false, "S09", "How do you test Spring Security rules?", [
+    "Use spring-security-test: @WithMockUser, user(), jwt(), csrf() with MockMvc.",
+    "Test anonymous (401), wrong role (403), missing CSRF (403) and allowed (200) cases.",
+    "Make sure the slice uses the real SecurityFilterChain (@Import it into @WebMvcTest)."]);
+  Q(SB, "Testing", "Medium", false, "S09", "How do you write unit tests with Mockito for a service?", [
+    "Construct the service with mocks (@ExtendWith(MockitoExtension.class), @Mock, @InjectMocks).",
+    "Stub with when/thenReturn, verify interactions, capture arguments with ArgumentCaptor.",
+    "Assert outcomes and exceptions with AssertJ; verifyNoInteractions for short-circuit paths."],
+    { code: `interface Mailer { void send(String to); }
+Mailer mailer = mock(Mailer.class);
+mailer.send("asha@example.com");
+ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
+verify(mailer).send(to.capture());
+System.out.println("sent to " + to.getValue());` });
+  Q(SB, "Testing", "Hard", true, "S09", "What are the pitfalls of @Transactional on tests?", [
+    "Rollback hides commit-time behaviour: constraint violations at flush, AFTER_COMMIT listeners.",
+    "The open session hides LazyInitializationException that production would throw.",
+    "With RANDOM_PORT, server threads don't share the test transaction, so data persists.",
+    "Use it for repository tests; for service flows use explicit clean-up."]);
+  Q(SB, "Testing", "Hard", false, "S09", "Why should @Bean methods not live on the @SpringBootApplication class?", [
+    "Every test slice loads the main application class, so its @Bean methods are created in slices too.",
+    "A JPA slice then fails to build beans needing web/security infrastructure (e.g. HttpSecurity), or loads unwanted beans.",
+    "Put them in dedicated @Configuration classes and @Import them where a slice needs them."]);
+
+  Q(SB, "Observability", "Easy", true, "S10", "What is Spring Boot Actuator?", [
+    "A module adding production endpoints: health, info, metrics, prometheus, loggers, env, threaddump, heapdump, etc.",
+    "Endpoints must be enabled and exposed (HTTP exposes only health by default).",
+    "It integrates Micrometer for metrics and Micrometer Tracing for traces."]);
+  Q(SB, "Observability", "Easy", true, "S10", "What is the difference between liveness and readiness probes?", [
+    "Liveness: is the app broken and in need of a restart? Internal state only.",
+    "Readiness: can it accept traffic now? May include critical dependencies; failing removes the pod from load balancing.",
+    "Boot exposes them as /actuator/health/liveness and /readiness via ApplicationAvailability."]);
+  Q(SB, "Observability", "Easy", false, "S10", "How do you write a custom health check?", [
+    "Implement HealthIndicator (or extend AbstractHealthIndicator) as a bean; return Health.up()/down() with details.",
+    "Its name is the bean name without the HealthIndicator suffix; add it to health groups as needed.",
+    "Keep it fast and time-bounded."],
+    { code: `HealthIndicator queue = () -> Health.status(new Status("DEGRADED")).withDetail("lag", 1200).build();
+System.out.println(queue.health().getStatus() + " " + queue.health().getDetails());` });
+  Q(SB, "Observability", "Medium", true, "S10", "Explain Micrometer meter types.", [
+    "Counter: monotonically increasing count.",
+    "Timer: count, total time, max, optional percentiles/histograms for latency.",
+    "Gauge: current sampled value; DistributionSummary: distribution of non-time values; LongTaskTimer for in-flight work.",
+    "All are dimensional via tags."],
+    { code: `MeterRegistry r = new SimpleMeterRegistry();
+Counter.builder("signups").tag("plan", "pro").register(r).increment(2);
+System.out.println(r.get("signups").tag("plan", "pro").counter().count());` });
+  Q(SB, "Observability", "Medium", true, "S10", "How do you secure Actuator endpoints?", [
+    "Expose only required endpoints; keep health details when-authorized.",
+    "Use EndpointRequest matchers in a SecurityFilterChain to permit health/info/prometheus and require a role for the rest, or a separate internal management port.",
+    "Keep env/configprops masked; never expose heapdump publicly."]);
+  Q(SB, "Observability", "Medium", true, "S10", "What is metric cardinality and why does it matter?", [
+    "The number of unique tag-value combinations (time series) for a metric.",
+    "Unbounded tags like user id explode memory and cost in Prometheus or vendors.",
+    "Use bounded tags (URI templates, status), and MeterFilters to cap or deny."]);
+  Q(SB, "Observability", "Medium", false, "S10", "Percentiles vs histograms in Micrometer?", [
+    "publishPercentiles computes quantiles in the app: cheap to read but not aggregatable across instances.",
+    "Histograms (percentile histogram / SLO buckets) export buckets the backend aggregates, enabling fleet-wide p99 and SLO alerts.",
+    "Histograms cost more series; enable them for key timers."]);
+  Q(SB, "Observability", "Hard", true, "S10", "How does distributed tracing work across Spring Boot services?", [
+    "Micrometer Tracing creates spans from Observations; a trace id is shared and each span has a parent.",
+    "Instrumented clients send the W3C traceparent header; servers continue the trace; Kafka headers carry it for messaging.",
+    "Spans are exported via OTLP/Zipkin with sampling; traceId/spanId are added to the MDC for log correlation."]);
+  Q(SB, "Observability", "Hard", false, "S10", "What is the Observation API?", [
+    "Micrometer's abstraction to instrument an operation once (start/stop/error/events).",
+    "Handlers turn it into metrics (timers), traces (spans) and logs.",
+    "Low-cardinality key values become tags; high-cardinality only go to traces; @Observed annotates bean methods."]);
+  Q(SB, "Observability", "Hard", false, "S10", "What would you monitor and alert on for a REST service?", [
+    "RED: request rate, error rate, duration percentiles per endpoint; USE for CPU, memory, GC, thread and connection pools, queues.",
+    "Business metrics (orders, payments) and dependency health/latency.",
+    "Alert on SLO error-budget burn and user-facing impact, not on every metric spike; use traces and logs for diagnosis."]);
+
   window.JAVA_IQ = QS;
 })();
