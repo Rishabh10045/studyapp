@@ -1077,5 +1077,258 @@ System.out.println(ForkJoinPool.commonPool().invoke(new Sum(data, 0, data.length
     "Consume results (return or Blackhole) to avoid dead-code elimination; @State setup outside measurement.",
     "Stable hardware, error margins reported, and profilers to explain results."]);
 
+  Q(MT, "ThreadLocal", "Easy", true, "J24", "What is ThreadLocal and what are its typical uses?", [
+    "A variable whose value is separate for each thread; get/set/remove act on the current thread's copy.",
+    "Uses: per-thread instances of non-thread-safe objects, and implicit request context (trace id/MDC, security principal, tenant, transaction resources).",
+    "Trade-offs: hidden dependencies, mandatory cleanup on pooled threads, doesn't cross threads."],
+    { code: `ThreadLocal<Integer> counter = ThreadLocal.withInitial(() -> 0);
+Runnable work = () -> { for (int i = 0; i < 3; i++) counter.set(counter.get() + 1); System.out.println(Thread.currentThread().getName() + " " + counter.get()); };
+Thread a = new Thread(work, "t1"), b = new Thread(work, "t2");
+a.start(); b.start(); a.join(); b.join();
+System.out.println("main " + counter.get());` });
+  Q(MT, "ThreadLocal", "Medium", true, "J24", "How is ThreadLocal implemented internally?", [
+    "Each Thread has a ThreadLocalMap; the ThreadLocal object is the key, held by a WeakReference.",
+    "Values are strongly referenced and live until remove(), overwrite, stale-entry cleanup, or thread death.",
+    "So the lookup is per-thread and needs no locking."]);
+  Q(MT, "ThreadLocal", "Medium", true, "J24", "How can ThreadLocal cause memory leaks?", [
+    "Pool threads live for the whole app; values not removed stay reachable forever.",
+    "Weak keys don't help values: a lost ThreadLocal leaves a stale value until cleanup.",
+    "In app servers, leftover values pin the undeployed app's class loader (Metaspace leak).",
+    "Fix: static final ThreadLocals, remove() in finally, small values."]);
+  Q(MT, "ThreadLocal", "Easy", true, "J24", "Why must ThreadLocal be cleared in a thread pool, and how?", [
+    "Threads are reused; the next task on that thread sees the previous value (wrong user/tenant).",
+    "Pattern: set at the boundary, try { work } finally { remove() }."],
+    { code: `ThreadLocal<String> user = new ThreadLocal<>();
+ExecutorService pool = Executors.newSingleThreadExecutor();
+pool.submit(() -> { user.set("alice"); try { System.out.println("as " + user.get()); } finally { user.remove(); } }).get();
+pool.submit(() -> System.out.println("next task sees " + user.get())).get();
+pool.shutdown();` });
+  Q(MT, "ThreadLocal", "Medium", false, "J24", "ThreadLocal vs InheritableThreadLocal?", [
+    "InheritableThreadLocal copies the parent's value to a child thread when the child is created.",
+    "With pools threads are created once, so tasks see stale snapshots; use explicit capture/restore instead.",
+    "Override childValue to copy mutable values."]);
+  Q(MT, "ThreadLocal", "Medium", true, "J24", "How do you propagate ThreadLocal context (MDC, security) to async tasks?", [
+    "Capture the value when the task is submitted; set it in a wrapper before run and restore/clear in finally.",
+    "Decorate the executor once (Spring TaskDecorator, DelegatingSecurityContextExecutor, Micrometer context-propagation).",
+    "Pass that executor to every CompletableFuture async stage."],
+    { code: `ThreadLocal<String> trace = new ThreadLocal<>();
+ExecutorService pool = Executors.newFixedThreadPool(2);
+trace.set("t-42");
+String captured = trace.get();
+Future<String> f = pool.submit(() -> { trace.set(captured); try { return "worker sees " + trace.get(); } finally { trace.remove(); } });
+System.out.println(f.get());
+pool.shutdown();` });
+  Q(MT, "ThreadLocal", "Hard", false, "J24", "Why does @Transactional or SecurityContext not apply inside CompletableFuture.supplyAsync?", [
+    "Spring keeps the transaction's connection and the security context in ThreadLocals of the calling thread.",
+    "The async task runs on a pool thread without those bindings: no transaction (or a new one), no authentication.",
+    "Keep transactional work on the calling thread or make the async task its own transactional bean call; propagate security with a delegating executor."]);
+  Q(MT, "ThreadLocal", "Medium", false, "J24", "Why use ThreadLocalRandom instead of a shared Random?", [
+    "Random updates a shared seed with CAS; under contention threads retry and slow down.",
+    "ThreadLocalRandom.current() keeps state per thread: no contention.",
+    "Use SecureRandom for security tokens."],
+    { code: `int[] hits = new int[1];
+IntStream.range(0, 4).parallel().forEach(i -> { int r = ThreadLocalRandom.current().nextInt(10, 20); if (r >= 10 && r < 20) synchronized (hits) { hits[0]++; } });
+System.out.println("in range: " + hits[0]);` });
+  Q(MT, "ThreadLocal", "Hard", true, "J24", "What changes for ThreadLocal with virtual threads?", [
+    "They work, but virtual threads are usually one per task and never pooled.",
+    "ThreadLocal caches of expensive objects are rebuilt per task; per-thread memory multiplies with millions of threads.",
+    "Keep values small, avoid caches, and prefer scoped values for context."]);
+  Q(MT, "ThreadLocal", "Hard", false, "J24", "What are scoped values (ScopedValue) and how do they compare with ThreadLocal?", [
+    "Bound with ScopedValue.where(KEY, v).run(...); readable via KEY.get() by code called within that run.",
+    "Immutable (no set), can be rebound in a nested scope, binding ends automatically: no leaks or cleanup.",
+    "Cheap and inherited by StructuredTaskScope subtasks; preview in Java 21, final in Java 25.",
+    "ThreadLocal remains for mutable per-thread state."]);
+
+  Q(MT, "Virtual threads", "Easy", true, "J25", "What are virtual threads?", [
+    "Lightweight java.lang.Thread instances scheduled by the JVM (Java 21, JEP 444).",
+    "Stacks live on the heap; creation is cheap; millions can exist.",
+    "They run mounted on carrier platform threads and unmount when they block, so blocking code scales."],
+    { code: `try (ExecutorService ex = Executors.newVirtualThreadPerTaskExecutor()) {
+    Future<Boolean> f = ex.submit(() -> Thread.currentThread().isVirtual());
+    System.out.println("virtual: " + f.get());
+}` });
+  Q(MT, "Virtual threads", "Medium", true, "J25", "How do virtual threads work under the hood (carriers, mount/unmount)?", [
+    "A ForkJoinPool of carrier platform threads (one per core by default) runs them.",
+    "On a blocking JDK call the virtual thread's frames are moved to the heap and it unmounts; the carrier runs another virtual thread.",
+    "When the operation completes, it is rescheduled on any free carrier."]);
+  Q(MT, "Virtual threads", "Easy", true, "J25", "When should you use virtual threads, and when not?", [
+    "Use for I/O-bound, high-concurrency work: thread-per-request servers, fan-out to services.",
+    "No gain for CPU-bound work (cores are the limit) or short in-memory tasks.",
+    "They improve throughput, not per-request latency."]);
+  Q(MT, "Virtual threads", "Medium", true, "J25", "What is pinning and how do you avoid it?", [
+    "On Java 21 a virtual thread blocking inside synchronized or native code can't unmount and holds its carrier.",
+    "Detect with -Djdk.tracePinnedThreads=full or the JFR event jdk.VirtualThreadPinned.",
+    "Fix: ReentrantLock around blocking work, no I/O in critical sections, or Java 24+ (JEP 491) where synchronized no longer pins."],
+    { code: `ReentrantLock lock = new ReentrantLock();
+try (ExecutorService ex = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (int i = 0; i < 3; i++) ex.submit(() -> { lock.lock(); try { Thread.sleep(10); } finally { lock.unlock(); } return null; });
+}
+System.out.println("ReentrantLock lets waiting virtual threads unmount");` });
+  Q(MT, "Virtual threads", "Medium", true, "J25", "Should virtual threads be pooled? How do you limit concurrency?", [
+    "No: they are cheap and meant to be one per task; pooling caps concurrency and brings back ThreadLocal reuse issues.",
+    "Limit the resource instead: Semaphore bulkheads, connection pool sizes, rate limiters."],
+    { code: `Semaphore permits = new Semaphore(5);
+AtomicInteger now = new AtomicInteger(), peak = new AtomicInteger();
+try (ExecutorService ex = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (int i = 0; i < 200; i++) ex.submit(() -> { permits.acquire(); try { peak.accumulateAndGet(now.incrementAndGet(), Math::max); Thread.sleep(2); } finally { now.decrementAndGet(); permits.release(); } return null; });
+}
+System.out.println("peak " + peak.get());` });
+  Q(MT, "Virtual threads", "Medium", false, "J25", "How many ways can you create a virtual thread?", [
+    "Thread.startVirtualThread(r); Thread.ofVirtual().name(...).start(r) or unstarted(r).",
+    "Thread.ofVirtual().factory() for ThreadFactory-based APIs.",
+    "Executors.newVirtualThreadPerTaskExecutor() (or newThreadPerTaskExecutor(factory))."]);
+  Q(MT, "Virtual threads", "Hard", false, "J25", "What can go wrong when migrating a service to virtual threads?", [
+    "Downstream overload once the pool's implicit limit is gone (DB, APIs).",
+    "Pinning on Java 21; ThreadLocal caches rebuilt per task and higher memory.",
+    "CPU-heavy tasks occupying carriers; jstack not showing virtual threads (use jcmd Thread.dump_to_file).",
+    "Mitigate with explicit limits, profiling with JFR, separate CPU pools, load tests."]);
+  Q(MT, "Virtual threads", "Hard", true, "J25", "What is structured concurrency (StructuredTaskScope)?", [
+    "Preview API (Java 21, JEP 453) that forks subtasks inside a scope and joins them before the scope exits.",
+    "ShutdownOnFailure cancels siblings on the first failure; ShutdownOnSuccess keeps the first result and cancels the rest; joinUntil adds deadlines.",
+    "No orphaned tasks, cancellation propagates, thread dumps show the hierarchy; Java 25 reshaped it as StructuredTaskScope.open() with Joiners (still preview)."]);
+  Q(MT, "Virtual threads", "Medium", false, "J25", "Virtual threads vs reactive programming?", [
+    "Both handle massive I/O concurrency without an OS thread per waiting request.",
+    "Virtual threads keep blocking, imperative code with normal stack traces and JDBC.",
+    "Reactive requires non-blocking libraries end to end but offers streaming and backpressure."]);
+  Q(MT, "Virtual threads", "Easy", false, "J25", "How do you enable virtual threads in Spring Boot?", [
+    "Spring Boot 3.2+ on Java 21: spring.threads.virtual.enabled=true.",
+    "Tomcat/Jetty requests, @Async, @Scheduled and messaging listeners then run on virtual threads.",
+    "Still size the connection pool and other downstream limits explicitly."]);
+
+  Q(MT, "Liveness", "Easy", true, "J26", "What is a deadlock? Write one.", [
+    "Threads each hold a resource and wait for one held by another, in a cycle; none can proceed.",
+    "Classic: T1 locks A then B, T2 locks B then A."],
+    { code: `Object a = new Object(), b = new Object();
+CountDownLatch go = new CountDownLatch(2);
+Thread t1 = new Thread(() -> { synchronized (a) { go.countDown(); try { go.await(); } catch (InterruptedException e) { return; } synchronized (b) { } } });
+Thread t2 = new Thread(() -> { synchronized (b) { go.countDown(); try { go.await(); } catch (InterruptedException e) { return; } synchronized (a) { } } });
+t1.setDaemon(true); t2.setDaemon(true); t1.start(); t2.start(); t1.join(300);
+System.out.println(t1.getState() + " " + t2.getState());` });
+  Q(MT, "Liveness", "Easy", true, "J26", "What are the four necessary conditions for deadlock?", [
+    "Mutual exclusion, hold and wait, no preemption, circular wait (Coffman).",
+    "Remove any one to prevent deadlock; usually circular wait (lock ordering) or hold-and-wait (tryLock/timeouts)."]);
+  Q(MT, "Liveness", "Medium", true, "J26", "How do you prevent deadlocks in Java code?", [
+    "Avoid multiple locks (immutability, concurrent collections, confinement).",
+    "Global lock ordering, e.g. lock the account with the lower id first.",
+    "tryLock with timeout, release and retry with jittered back-off.",
+    "Short critical sections, no alien calls or I/O under locks, don't block on your own pool, timeouts everywhere."],
+    { code: `record Acct(int id) { }
+Acct a = new Acct(2), b = new Acct(1);
+Acct first = a.id() < b.id() ? a : b, second = first == a ? b : a;
+synchronized (first) { synchronized (second) { System.out.println("locked " + first.id() + " then " + second.id()); } }` });
+  Q(MT, "Liveness", "Medium", true, "J26", "How do you detect a deadlock in a running application?", [
+    "Thread dump via jstack <pid>, jcmd <pid> Thread.print or kill -3; look for \"Found one Java-level deadlock\".",
+    "ThreadMXBean.findDeadlockedThreads() programmatically (monitors and ReentrantLocks).",
+    "Take several dumps seconds apart; JMC/VisualVM also flag deadlocks."],
+    { code: `java.lang.management.ThreadMXBean mx = java.lang.management.ManagementFactory.getThreadMXBean();
+long[] ids = mx.findDeadlockedThreads();
+System.out.println(ids == null ? "no deadlocked threads" : ids.length + " deadlocked threads");` });
+  Q(MT, "Liveness", "Medium", true, "J26", "Deadlock vs livelock vs starvation?", [
+    "Deadlock: blocked in a cycle, CPU idle.",
+    "Livelock: threads actively respond to each other (retries) without progress, CPU busy.",
+    "Starvation: a thread never obtains a resource others keep getting (unfair locks, priorities, greedy readers)."]);
+  Q(MT, "Liveness", "Medium", false, "J26", "How does tryLock help avoid deadlock, and what's the risk?", [
+    "If the second lock isn't acquired within a timeout, release the first and retry: hold-and-wait is broken.",
+    "Risk: livelock if retries are synchronised; use random exponential back-off and a retry limit."],
+    { code: `ReentrantLock a = new ReentrantLock(), b = new ReentrantLock();
+boolean done = false;
+a.lock();
+try { if (b.tryLock(10, TimeUnit.MILLISECONDS)) { try { done = true; } finally { b.unlock(); } } } finally { a.unlock(); }
+System.out.println("acquired both: " + done);` });
+  Q(MT, "Liveness", "Hard", false, "J26", "What is a thread-pool starvation deadlock?", [
+    "A task in a bounded pool waits (get/join) for a subtask submitted to the same pool.",
+    "With all workers waiting, the subtasks never run.",
+    "Fix: composition (thenCompose), separate pools, ForkJoin work stealing, virtual threads, timeouts."],
+    { code: `ExecutorService pool = Executors.newSingleThreadExecutor();
+Future<String> f = pool.submit(() -> { Future<String> in = pool.submit(() -> "x"); try { return in.get(100, TimeUnit.MILLISECONDS); } catch (TimeoutException e) { return "stuck"; } });
+System.out.println(f.get()); pool.shutdownNow();` });
+  Q(MT, "Liveness", "Medium", false, "J26", "Why avoid calling alien methods while holding a lock?", [
+    "Listeners, callbacks or other modules' methods may take locks in another order or block.",
+    "That creates hidden lock-order cycles and long hold times.",
+    "Use open calls: update state under the lock, copy, release, then call out."]);
+  Q(MT, "Liveness", "Hard", true, "J26", "A Java service is hanging in production. How do you troubleshoot?", [
+    "Before restarting, capture 2–3 thread dumps seconds apart, CPU per thread, pool/connection metrics.",
+    "Low CPU: look for deadlock section, many BLOCKED on one monitor, WAITING on futures/pools/connections.",
+    "High CPU: top -H, match hex TID to nid in dump; spinning, livelock or GC.",
+    "Fix the root cause and add timeouts and deadlock health checks."]);
+  Q(MT, "Liveness", "Medium", false, "J26", "What is lock fairness and when would you use a fair lock?", [
+    "A fair ReentrantLock/Semaphore grants access roughly in arrival order; unfair allows barging.",
+    "Fair reduces starvation and tail latency for waiters but lowers throughput significantly.",
+    "Use when starvation is observed or ordering matters; otherwise shorten critical sections."]);
+
+  Q(MT, "Classic problems", "Easy", true, "J27", "Implement producer–consumer in Java.", [
+    "Simplest: a bounded ArrayBlockingQueue; producers put (blocks when full), consumers take (blocks when empty).",
+    "Shut down with one poison pill per consumer, or interrupt.",
+    "From scratch: synchronized + wait/notifyAll, or Lock + notFull/notEmpty Conditions."],
+    { code: `BlockingQueue<Integer> q = new ArrayBlockingQueue<>(2);
+Thread p = new Thread(() -> { try { for (int i = 1; i <= 5; i++) q.put(i); q.put(-1); } catch (InterruptedException e) { } });
+StringBuilder sb = new StringBuilder();
+Thread c = new Thread(() -> { try { for (int v; (v = q.take()) != -1; ) sb.append(v).append(' '); } catch (InterruptedException e) { } });
+p.start(); c.start(); p.join(); c.join();
+System.out.println(sb.toString().trim());` });
+  Q(MT, "Classic problems", "Medium", true, "J27", "Implement a bounded blocking queue from scratch.", [
+    "One ReentrantLock, two Conditions: notFull and notEmpty.",
+    "put: while full await notFull; enqueue; signal notEmpty. take: while empty await notEmpty; dequeue; signal notFull.",
+    "Unlock in finally; while loops for spurious wake-ups; optional timed offer/poll with awaitNanos."],
+    { code: `class BQ<T> {
+    private final Deque<T> d = new ArrayDeque<>(); private final int cap;
+    private final ReentrantLock lock = new ReentrantLock(); private final Condition notFull = lock.newCondition(), notEmpty = lock.newCondition();
+    BQ(int cap) { this.cap = cap; }
+    void put(T x) throws InterruptedException { lock.lock(); try { while (d.size() == cap) notFull.await(); d.addLast(x); notEmpty.signal(); } finally { lock.unlock(); } }
+    T take() throws InterruptedException { lock.lock(); try { while (d.isEmpty()) notEmpty.await(); T x = d.removeFirst(); notFull.signal(); return x; } finally { lock.unlock(); } }
+}
+BQ<String> q = new BQ<>(1);
+Thread prod = new Thread(() -> { try { q.put("x"); q.put("y"); } catch (InterruptedException e) { } });
+prod.start();
+System.out.println(q.take() + q.take());
+prod.join();` });
+  Q(MT, "Classic problems", "Easy", true, "J27", "Print odd and even numbers alternately using two threads.", [
+    "Shared counter guarded by a lock; each thread waits while the counter's parity isn't its own.",
+    "Print, increment, notifyAll; check the upper bound in the wait loop so both threads exit.",
+    "Alternative: two semaphores passing a permit back and forth."],
+    { code: `Semaphore odd = new Semaphore(1), even = new Semaphore(0);
+StringBuffer out = new StringBuffer();
+Thread a = new Thread(() -> { for (int i = 1; i <= 5; i += 2) { odd.acquireUninterruptibly(); out.append(i); even.release(); } });
+Thread b = new Thread(() -> { for (int i = 2; i <= 6; i += 2) { even.acquireUninterruptibly(); out.append(i); odd.release(); } });
+a.start(); b.start(); a.join(); b.join();
+System.out.println(out);` });
+  Q(MT, "Classic problems", "Medium", true, "J27", "Print ABC in sequence using three threads.", [
+    "Semaphore per thread, only A's starts with a permit; each acquires its own, prints, releases the next.",
+    "Or one Lock with a Condition per thread and a turn variable, signalling only the next thread.",
+    "Or synchronized with a turn counter and notifyAll."]);
+  Q(MT, "Classic problems", "Medium", true, "J27", "What is the dining philosophers problem and how do you solve it?", [
+    "N philosophers share N forks; each needs both neighbours' forks. All taking the left first can deadlock.",
+    "Fixes: resource ordering (lower-numbered fork first), a waiter Semaphore(N-1), tryLock with release and back-off.",
+    "Watch for starvation too."]);
+  Q(MT, "Classic problems", "Easy", true, "J27", "Why use while instead of if around wait()? Why notifyAll?", [
+    "Spurious wake-ups and competing threads mean the condition may be false after waking; re-check in a loop.",
+    "When threads waiting for different conditions share one monitor, notify may wake the wrong one; notifyAll (or separate Conditions) avoids stalls."]);
+  Q(MT, "Classic problems", "Medium", false, "J27", "Implement a thread-safe singleton.", [
+    "Holder idiom: lazy and thread-safe via class initialisation, no locking on access.",
+    "Enum singleton: simplest, serialization-safe.",
+    "Double-checked locking requires a volatile field."],
+    { code: `class Holder { private Holder() { } private static class I { static final Holder X = new Holder(); } static Holder get() { return I.X; } }
+Set<Holder> seen = ConcurrentHashMap.newKeySet();
+try (ExecutorService pool = Executors.newFixedThreadPool(8)) { for (int i = 0; i < 100; i++) pool.submit(() -> seen.add(Holder.get())); }
+System.out.println("distinct instances " + seen.size());` });
+  Q(MT, "Classic problems", "Hard", false, "J27", "Implement multithreaded FizzBuzz with four threads.", [
+    "Shared current number under one monitor.",
+    "Each thread waits while the number isn't its kind (fizz, buzz, fizzbuzz, number) and the end isn't reached.",
+    "Acts, increments, notifyAll; all exit once cur > n."]);
+  Q(MT, "Classic problems", "Hard", true, "J27", "Implement a thread-safe rate limiter.", [
+    "Token bucket: tokens refill at rate r up to capacity; a request consumes one token or is rejected.",
+    "synchronized tryAcquire computing refill from System.nanoTime(); lock-free version with CAS on an immutable state.",
+    "Per-client buckets in a ConcurrentHashMap; distributed limits in Redis."],
+    { code: `class Bucket { final long cap; double tokens; long last = System.nanoTime(); final double perNano;
+    Bucket(long cap, double perSec) { this.cap = cap; tokens = cap; perNano = perSec / 1e9; }
+    synchronized boolean tryAcquire() { long now = System.nanoTime(); tokens = Math.min(cap, tokens + (now - last) * perNano); last = now; if (tokens >= 1) { tokens--; return true; } return false; } }
+Bucket b = new Bucket(3, 1);
+int ok = 0; for (int i = 0; i < 10; i++) if (b.tryAcquire()) ok++;
+System.out.println("allowed " + ok + " of 10");` });
+  Q(MT, "Classic problems", "Medium", false, "J27", "How do you test concurrent code?", [
+    "Stress with many threads and iterations, released together by a CountDownLatch start gate.",
+    "Assert invariants (totals, no duplicates, ordering) and use timeouts so deadlocks fail tests.",
+    "Vary capacities/thread counts; use jcstress for memory-model questions; thread dumps on hang."]);
+
   window.JAVA_IQ = QS;
 })();
