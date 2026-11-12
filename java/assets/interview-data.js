@@ -124,5 +124,143 @@
     "`ArrayList<Integer>` of 1M items ≈ 4 MB of references + ~16 MB of `Integer` objects, vs 4 MB for `int[]`.",
     "Use primitive arrays, `IntStream`, or primitive collections (Eclipse Collections, fastutil) for large numeric data."]);
 
+  var O = "OOP in Java";
+  Q(O, "Access & modifiers", "Easy", true, "J03", "What are the access modifiers in Java and what is package-private?", [
+    "`private` (class only), package-private (no keyword: same package), `protected` (package + subclasses), `public` (everyone).",
+    "Package-private is the default when you write no modifier; useful to hide implementation classes behind a public interface.",
+    "Top-level classes can only be `public` or package-private."]);
+  Q(O, "Polymorphism", "Easy", true, "J03", "Overloading vs overriding: what's the difference?", [
+    "**Overloading**: same name, different parameters; resolved at **compile time** from static argument types.",
+    "**Overriding**: subclass re-implements an inherited instance method with the same signature; resolved at **run time** from the object's class.",
+    "Overrides may use a covariant return type and wider access, and may not throw broader checked exceptions."]);
+  Q(O, "Polymorphism", "Medium", true, "J03", "Can static or private methods be overridden? What about fields?", [
+    "No. Static methods are **hidden**: the call binds to the declared type.",
+    "Private methods aren't inherited, so a same-named subclass method is unrelated.",
+    "Fields are never polymorphic: `Parent p = new Child(); p.field` reads Parent's field."]);
+  Q(O, "Polymorphism", "Medium", false, "J03", "How does Java pick an overload when several could apply?", [
+    "Phase 1: exact match / primitive widening, no boxing or varargs. Phase 2: allow boxing/unboxing. Phase 3: allow varargs.",
+    "Within the first successful phase, the **most specific** method wins; if none is, the call is ambiguous (compile error).",
+    "Only static types matter: `Object o = \"s\"; f(o)` calls `f(Object)`."], { code: `static String f(long x) { return "long"; }
+static String f(Integer x) { return "Integer"; }
+static String f(int... x) { return "varargs"; }
+System.out.println(f(5));        // long: widening beats boxing beats varargs` });
+  Q(O, "Objects & construction", "Medium", true, "J03", "Explain constructor chaining and object initialisation order.", [
+    "Every constructor starts with `this(...)` or `super(...)` (implicit `super()` if omitted).",
+    "Order: static init of parent then child (once per class), then for each object: parent field initialisers/instance blocks → parent constructor body → child initialisers → child constructor body.",
+    "Calling an overridable method from a parent constructor sees child fields still at default values."]);
+  Q(O, "Modifiers", "Easy", true, "J03", "What does `final` mean on a variable, a method and a class?", [
+    "Variable/field: can be assigned only once (a final reference can still point to a mutable object).",
+    "Method: can't be overridden. Class: can't be extended (`String`, records).",
+    "`final` fields also get safe-publication guarantees under the Java Memory Model."]);
+  Q(O, "Modifiers", "Medium", true, "J03", "How do you make a class immutable?", [
+    "Make the class `final` (or constructors private with factories).",
+    "All fields `private final`; no setters.",
+    "Defensive copies of mutable inputs and outputs (`List.copyOf`, copying `Date`s/arrays).",
+    "\"Modifying\" methods return new instances. Records give most of this for free, but still copy mutable components."]);
+  Q(O, "Abstraction", "Easy", true, "J03", "Abstract class vs interface in modern Java?", [
+    "Interface: no instance state, multiple inheritance of type, can have `default`, `static` and `private` methods.",
+    "Abstract class: state, constructors, any access levels; single inheritance.",
+    "Use interfaces for capabilities/contracts; abstract classes for a shared base with state (template method)."]);
+  Q(O, "Abstraction", "Medium", false, "J03", "What happens when a class inherits the same default method from two interfaces?", [
+    "Compile error unless the class overrides the method.",
+    "Inside the override you can delegate: `A.super.name()`.",
+    "Rules: a superclass method beats interface defaults; a more specific (sub-)interface beats its parent."]);
+  Q(O, "Nested classes", "Medium", true, "J03", "Static nested class vs inner class?", [
+    "An inner (non-static) class instance holds a hidden reference to its outer instance (`Outer.this`) and is created with `outer.new Inner()`.",
+    "A static nested class has no outer instance; it's just a class scoped inside another (e.g. `Builder`, `Map.Entry` impls).",
+    "Prefer static nested; inner classes can leak the outer object if they outlive it."]);
+  Q(O, "Design", "Medium", true, "J03", "Why prefer composition over inheritance? Give a concrete failure of inheritance.", [
+    "Inheritance couples you to the parent's implementation, including how it calls its own methods (self-use).",
+    "Example: overriding `add` and `addAll` in a `HashSet` subclass double-counts because `HashSet.addAll` calls `add`.",
+    "Composition (wrap + forward) depends only on the public API; inherit only for true is-a relationships with classes designed for extension."]);
+  Q(O, "Design", "Hard", false, "J03", "Why doesn't `@Transactional` work on a private method or on a self-call?", [
+    "Spring applies it through a proxy (JDK dynamic proxy or CGLIB subclass) that overrides public methods.",
+    "Private/final methods can't be overridden, so they can't be intercepted.",
+    "Self-invocation (`this.method()`) bypasses the proxy entirely. Call through another bean or use `TransactionTemplate`."]);
+
+  var EQ = "equals, hashCode & ordering";
+  Q(EQ, "equals & hashCode", "Easy", true, "J04", "What is the contract between equals and hashCode?", [
+    "If `a.equals(b)` then `a.hashCode() == b.hashCode()`. The reverse isn't required (collisions are allowed).",
+    "hashCode must be consistent while the fields used by equals don't change.",
+    "Override both together, from the same fields."]);
+  Q(EQ, "equals & hashCode", "Easy", true, "J04", "What happens if you override equals but not hashCode?", [
+    "Equal objects get different identity hash codes and land in different buckets.",
+    "`HashSet` stores duplicates, `HashMap.get` returns null for an \"equal\" key, `contains` fails.",
+    "`List.contains` still works (it only uses equals), which hides the bug in some tests."]);
+  Q(EQ, "equals & hashCode", "Medium", true, "J04", "How does HashMap use hashCode and equals during get/put?", [
+    "Compute `key.hashCode()`, spread it (`h ^ h >>> 16`), choose bucket `(n-1) & hash`.",
+    "Walk that bucket: compare stored hash first, then reference equality, then `equals`.",
+    "Match → return/replace value; no match → null / append a new node (treeified bins for long chains)."]);
+  Q(EQ, "equals & hashCode", "Medium", true, "J04", "Why should HashMap keys be immutable?", [
+    "The entry is stored under the key's hash at insertion time.",
+    "If a field used by hashCode changes, lookups compute a new hash, search the wrong bucket and miss; the entry can't be removed but is still iterated.",
+    "Use String, enums, records with immutable components, or IDs."]);
+  Q(EQ, "equals & hashCode", "Medium", false, "J04", "getClass() or instanceof in equals?", [
+    "`instanceof`: subclasses can be equal to parents; correct for final classes; works with ORM proxies.",
+    "`getClass()`: only exact classes match; keeps symmetry when subclasses add state but breaks Liskov and proxies.",
+    "Best: final value classes (or records) with `instanceof`; composition instead of extending value classes."]);
+  Q(EQ, "Ordering", "Easy", true, "J04", "Comparable vs Comparator?", [
+    "`Comparable.compareTo` = the class's single natural order (`String`, `LocalDate`).",
+    "`Comparator.compare` = external, pluggable orders; compose with `comparing`, `thenComparing`, `reversed`, `nullsLast`.",
+    "Collections: `Collections.sort(list)` / `TreeSet<>()` use natural order; pass a comparator otherwise."]);
+  Q(EQ, "Ordering", "Medium", true, "J04", "What's wrong with `return a.getAge() - b.getAge();` in a comparator?", [
+    "Integer overflow for large values of opposite signs flips the sign, giving wrong order or TimSort contract errors.",
+    "Use `Integer.compare(a, b)` or `Comparator.comparingInt(Person::getAge)`."], { code: `Comparator<Integer> bad = (a, b) -> a - b;
+System.out.println(bad.compare(Integer.MAX_VALUE, -1) < 0);   // true: wrong!
+System.out.println(Integer.compare(Integer.MAX_VALUE, -1) > 0); // true: correct` });
+  Q(EQ, "Ordering", "Medium", false, "J04", "What does \"consistent with equals\" mean and why does it matter?", [
+    "`compareTo(a, b) == 0` exactly when `a.equals(b)`.",
+    "Sorted collections (TreeSet/TreeMap) use only compare: an inconsistent comparator makes them drop or merge elements that a HashSet would keep.",
+    "Example: `BigDecimal(\"2.0\")` vs `\"2.00\"`: HashSet size 2, TreeSet size 1. Fix comparators with tie-breakers."]);
+  Q(EQ, "Records & entities", "Medium", false, "J04", "How should equals/hashCode be implemented for JPA entities?", [
+    "Avoid all-field equality (Lombok `@Data`): lazy associations, mutable fields.",
+    "Use an immutable business key, or ID-based equals (`id != null && id.equals(other.getId())`) with a constant hashCode so the hash doesn't change on persist.",
+    "Use `instanceof`, not `getClass()`, because of proxies."]);
+
+  var EX = "Exceptions";
+  Q(EX, "Hierarchy", "Easy", true, "J05", "Explain the exception hierarchy. What's the difference between Error and Exception?", [
+    "`Throwable` has two branches: `Error` (JVM/environment problems like `OutOfMemoryError`, `StackOverflowError`: don't catch) and `Exception`.",
+    "`RuntimeException` and subclasses are unchecked; other `Exception`s are checked.",
+    "Errors and runtime exceptions need no `throws` declaration."]);
+  Q(EX, "Hierarchy", "Easy", true, "J05", "Checked vs unchecked exceptions: when would you use each?", [
+    "Checked: caller can reasonably recover and you want the compiler to force a decision (`IOException`).",
+    "Unchecked: programming errors and broken preconditions (`IllegalArgumentException`, `IllegalStateException`), or when callers can't do anything but fail.",
+    "Modern frameworks (Spring, JPA) mostly use unchecked; checked exceptions don't compose with lambdas."]);
+  Q(EX, "try/catch/finally", "Medium", true, "J05", "Does finally always execute? What if try has a return statement?", [
+    "Yes, after return/throw in try or catch, finally runs before control leaves.",
+    "The return value is evaluated first and saved; changing a local variable in finally doesn't change it (mutating a returned object does).",
+    "finally doesn't run on `System.exit`, `Runtime.halt`, JVM crash, or if the thread never completes.",
+    "`return` in finally overrides the pending return or exception: never do it."], { code: `static int f() { int x = 1; try { return x; } finally { x = 2; } }
+System.out.println(f());   // 1` });
+  Q(EX, "try/catch/finally", "Easy", false, "J05", "Can you have try without catch? What is multi-catch?", [
+    "Yes: `try/finally` or try-with-resources without catch are both legal.",
+    "Multi-catch `catch (IOException | SQLException e)` handles unrelated types in one block; the variable is implicitly final and the types can't be subclasses of each other.",
+    "Catch more specific types before general ones, or the code won't compile."]);
+  Q(EX, "Resources", "Medium", true, "J05", "How does try-with-resources work? What are suppressed exceptions?", [
+    "Resources implementing `AutoCloseable` declared in `try (...)` are closed automatically in reverse order, before catch/finally.",
+    "If the body throws and `close()` throws too, the close exception is attached to the primary one via `addSuppressed`, available from `getSuppressed()`.",
+    "Old-style `finally { r.close(); }` could replace the original exception with the close failure."]);
+  Q(EX, "Design", "Medium", true, "J05", "How do you create a good custom exception?", [
+    "Extend `RuntimeException` (or `Exception` for checked), name it after the problem.",
+    "Provide constructors with message and cause; carry domain context (ids) as fields; no secrets.",
+    "Group under a domain base exception so callers can catch broadly or narrowly; map to HTTP statuses at the edge."]);
+  Q(EX, "Design", "Medium", true, "J05", "What is exception chaining and why does it matter?", [
+    "Wrapping a lower-level exception as the **cause** of a higher-level one: `throw new FareLookupException(\"...\", e)`.",
+    "Preserves the original stack trace (`Caused by:`), while hiding implementation details from callers.",
+    "`throw new X(e.getMessage())` loses the root cause; avoid it."]);
+  Q(EX, "Best practices", "Medium", false, "J05", "List exception-handling anti-patterns you look for in code review.", [
+    "Empty catch blocks; catching `Exception`/`Throwable` broadly.",
+    "Log-and-rethrow at every layer (duplicate traces); losing the cause.",
+    "Exceptions as control flow in hot paths; returning null on failure.",
+    "return/throw in finally; swallowing `InterruptedException`; vague messages."]);
+  Q(EX, "Concurrency", "Hard", false, "J05", "How should you handle InterruptedException?", [
+    "It means another thread asked this one to stop; the interrupt flag is cleared when it's thrown.",
+    "Either propagate it (declare `throws InterruptedException`) or catch it and call `Thread.currentThread().interrupt()` to restore the flag, then exit/cleanup.",
+    "Swallowing it breaks cancellation (executor shutdownNow, Future.cancel)."]);
+  Q(EX, "Best practices", "Hard", false, "J05", "Why might an exception thrown inside an executor task never show up in logs?", [
+    "`submit()` captures it in the `Future`; if nobody calls `get()`, it's silently lost.",
+    "`scheduleAtFixedRate` stops all future runs after an exception, also recorded only in the Future.",
+    "Fix: catch and log inside tasks, call `get()`, or use `execute()` with an `UncaughtExceptionHandler`."]);
+
   window.JAVA_IQ = QS;
 })();
