@@ -1474,5 +1474,275 @@ new ApplicationContextRunner().withUserConfiguration(Cfg.class).withPropertyValu
     "@Value(\"${key:default}\"), @DefaultValue on @ConfigurationProperties record components, or field initialisers in JavaBean-style properties classes.",
     "Don't default values that must be set explicitly in production; validate them instead."]);
 
+  Q(SB, "REST", "Easy", true, "S04", "Walk through how Spring MVC handles an HTTP request.", [
+    "The DispatcherServlet receives it (after servlet filters), asks HandlerMappings for the matching handler method and runs interceptors' preHandle.",
+    "HandlerAdapter resolves arguments (path variables, params, @RequestBody via HttpMessageConverters), invokes the method, and writes the return value with a converter chosen by content negotiation.",
+    "Exceptions go through HandlerExceptionResolvers (@ExceptionHandler, ResponseStatusException) to become error responses."]);
+  Q(SB, "REST", "Easy", true, "S04", "@Controller vs @RestController?", [
+    "@RestController = @Controller + @ResponseBody: return values are serialized to the body (JSON) instead of being resolved as view names.",
+    "Use @Controller for server-rendered pages (Thymeleaf)."],
+    { code: `@RestController class Hi { @GetMapping("/hi") Map<String, String> hi() { return Map.of("msg", "hello"); } }
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new Hi()).build();
+var r = mvc.perform(get("/hi")).andReturn().getResponse();
+System.out.println(r.getContentType() + " " + r.getContentAsString());` });
+  Q(SB, "REST", "Easy", true, "S04", "@PathVariable vs @RequestParam vs @RequestBody?", [
+    "@PathVariable: part of the URI identifying a resource (/orders/{id}).",
+    "@RequestParam: query/form parameters for filtering, paging, options; can be optional with defaults.",
+    "@RequestBody: the deserialized request body (JSON) into a DTO."],
+    { code: `record Item(String name) { }
+@RestController class C {
+    @PostMapping("/lists/{id}/items") String add(@PathVariable long id, @RequestParam(defaultValue = "1") int qty, @RequestBody Item item) { return id + ":" + item.name() + "x" + qty; }
+}
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new C()).build();
+System.out.println(mvc.perform(post("/lists/7/items").param("qty", "3").contentType(MediaType.APPLICATION_JSON).content("{\\"name\\":\\"tea\\"}")).andReturn().getResponse().getContentAsString());` });
+  Q(SB, "REST", "Easy", true, "S04", "Which HTTP status codes should a REST API return, and when?", [
+    "200 OK (read/update with body), 201 Created + Location (create), 204 No Content (delete/update without body), 202 Accepted (async).",
+    "400 malformed/invalid, 401 unauthenticated, 403 forbidden, 404 not found, 405 method not allowed, 406/415 media type issues, 409 conflict, 422 semantic validation, 429 rate limited.",
+    "5xx only for server faults; 503 with Retry-After when overloaded."]);
+  Q(SB, "REST", "Medium", true, "S04", "What is the difference between 406 and 415?", [
+    "406 Not Acceptable: the server can't produce any representation matching the request's Accept header.",
+    "415 Unsupported Media Type: the server can't read the request body's Content-Type."],
+    { code: `record In(String v) { }
+@RestController class C { @PostMapping(value = "/x", consumes = "application/json", produces = "application/json") In echo(@RequestBody In in) { return in; } }
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new C()).build();
+System.out.println("Accept xml → " + mvc.perform(post("/x").contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_XML).content("{\\"v\\":\\"a\\"}")).andReturn().getResponse().getStatus());
+System.out.println("Content-Type text → " + mvc.perform(post("/x").contentType(MediaType.TEXT_PLAIN).content("a")).andReturn().getResponse().getStatus());` });
+  Q(SB, "REST", "Medium", true, "S04", "Which HTTP methods are safe and which are idempotent? Why does it matter?", [
+    "Safe (no state change): GET, HEAD, OPTIONS. Idempotent (same effect when repeated): those plus PUT and DELETE.",
+    "POST is neither; PATCH isn't guaranteed idempotent.",
+    "Clients, proxies and retry libraries may automatically retry idempotent requests, so non-idempotent operations need idempotency keys."]);
+  Q(SB, "REST", "Medium", true, "S04", "How do you implement idempotent POST requests (e.g. payments)?", [
+    "Client generates a unique Idempotency-Key per logical operation and resends it on retries.",
+    "Server stores key → result (unique constraint, TTL), processes once, and returns the stored response for repeats; concurrent duplicates wait or get 409.",
+    "Also compare the request fingerprint to reject a reused key with a different body."],
+    { code: `Map<String, String> results = new ConcurrentHashMap<>();
+AtomicInteger charges = new AtomicInteger();
+java.util.function.Function<String, String> pay = key -> results.computeIfAbsent(key, k -> "txn-" + charges.incrementAndGet());
+System.out.println(pay.apply("k1") + " " + pay.apply("k1") + " " + pay.apply("k2") + " charges=" + charges.get());` });
+  Q(SB, "REST", "Medium", true, "S04", "Offset vs cursor (keyset) pagination?", [
+    "Offset (page/size): simple, supports jumping to page N, but deep pages scan and skip rows and results shift when data changes.",
+    "Cursor: client passes the last seen sort key; query WHERE key > ? ORDER BY key LIMIT n uses the index, stays stable under inserts, but no random page access.",
+    "Use cursor for feeds/infinite scroll and large tables; always cap page size."]);
+  Q(SB, "REST", "Medium", false, "S04", "How do you version a REST API?", [
+    "URI (/v1/orders) is most visible and cache-friendly; header (X-API-Version) or media type (application/vnd.app.v2+json) keep URIs stable.",
+    "Prefer backward-compatible evolution (add optional fields); version only for breaking changes, run versions in parallel, use Deprecation/Sunset headers.",
+    "Spring Framework 7 adds first-class API versioning support."]);
+  Q(SB, "REST", "Hard", true, "S04", "Servlet filter vs HandlerInterceptor vs AOP, and how do you configure CORS?", [
+    "Filters wrap every request at the servlet level (security, correlation id, compression); interceptors run inside MVC around the matched handler; aspects wrap bean methods.",
+    "CORS: @CrossOrigin on controllers or a global WebMvcConfigurer.addCorsMappings / CorsConfigurationSource with explicit origins, methods and headers; with Spring Security enable http.cors().",
+    "Never combine allowCredentials with wildcard origins."],
+    { code: `class Trace { static final List<String> log = new ArrayList<>(); }
+@RestController class Ping { @GetMapping("/ping") String ping() { Trace.log.add("handler"); return "pong"; } }
+class Corr extends OncePerRequestFilter {
+    protected void doFilterInternal(HttpServletRequest rq, HttpServletResponse rs, FilterChain ch) throws jakarta.servlet.ServletException, java.io.IOException { Trace.log.add("filter"); ch.doFilter(rq, rs); }
+}
+class Timing implements HandlerInterceptor {
+    public boolean preHandle(HttpServletRequest rq, HttpServletResponse rs, Object h) { Trace.log.add("interceptor"); return true; }
+}
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new Ping()).addFilters(new Corr()).addInterceptors(new Timing()).build();
+mvc.perform(get("/ping"));
+System.out.println(Trace.log);` });
+
+  Q(SB, "Validation & errors", "Easy", true, "S05", "How do you validate a request body in Spring Boot?", [
+    "Add spring-boot-starter-validation, annotate DTO fields (@NotBlank, @Email, @Min…), and put @Valid on the @RequestBody parameter.",
+    "Failures throw MethodArgumentNotValidException → 400 before the method runs; customise the body in a @RestControllerAdvice."],
+    { code: `record NewUser(@NotBlank String name, @Email @NotBlank String email) { }
+@RestController class U { @PostMapping("/users") String create(@Valid @RequestBody NewUser u) { return "ok"; } }
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new U()).build();
+System.out.println(mvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON).content("{\\"name\\":\\"\\",\\"email\\":\\"x\\"}")).andReturn().getResponse().getStatus());` });
+  Q(SB, "Validation & errors", "Easy", true, "S05", "@NotNull vs @NotEmpty vs @NotBlank?", [
+    "@NotNull: not null (any type).",
+    "@NotEmpty: not null and size/length > 0 (strings, collections, maps, arrays).",
+    "@NotBlank: strings only; not null and at least one non-whitespace character."],
+    { code: `record T(@NotNull String a, @NotEmpty String b, @NotBlank String c) { }
+Validator v = Validation.buildDefaultValidatorFactory().getValidator();
+System.out.println(v.validate(new T(" ", " ", " ")).stream().map(e -> e.getPropertyPath().toString()).toList());` });
+  Q(SB, "Validation & errors", "Easy", true, "S05", "@Valid vs @Validated?", [
+    "@Valid (Jakarta) triggers validation and cascades into nested objects/collections.",
+    "@Validated (Spring) supports validation groups and, on a class, enables method-level validation via an AOP proxy (ConstraintViolationException)."]);
+  Q(SB, "Validation & errors", "Medium", true, "S05", "How do you handle exceptions globally in Spring MVC?", [
+    "A @RestControllerAdvice class with @ExceptionHandler methods; Spring picks the most specific exception type.",
+    "Map domain exceptions to statuses there; extend ResponseEntityExceptionHandler to cover Spring MVC's own exceptions consistently.",
+    "Controllers and services stay free of HTTP error plumbing."],
+    { code: `class NotFound extends RuntimeException { NotFound(String m) { super(m); } }
+@RestController class C { @GetMapping("/x/{id}") String x(@PathVariable int id) { throw new NotFound("x " + id + " missing"); } }
+@RestControllerAdvice class A { @ExceptionHandler(NotFound.class) ProblemDetail nf(NotFound e) { return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage()); } }
+MockMvc mvc = MockMvcBuilders.standaloneSetup(new C()).setControllerAdvice(new A()).build();
+var r = mvc.perform(get("/x/3")).andReturn().getResponse();
+System.out.println(r.getStatus() + " " + r.getContentAsString());` });
+  Q(SB, "Validation & errors", "Medium", true, "S05", "What is ProblemDetail / RFC 9457?", [
+    "A standard JSON error format (application/problem+json) with type, title, status, detail, instance plus extension members.",
+    "Spring 6 models it with ProblemDetail and ErrorResponse; return it from @ExceptionHandler or enable spring.mvc.problemdetails.enabled for framework errors.",
+    "RFC 9457 obsoletes RFC 7807."]);
+  Q(SB, "Validation & errors", "Medium", true, "S05", "How do you write a custom validation annotation?", [
+    "Define an annotation with @Constraint(validatedBy = X.class), @Target/@Retention, and message(), groups(), payload().",
+    "Implement ConstraintValidator<A, T>.isValid; return true for null and combine with @NotNull for presence.",
+    "For cross-field rules use a class-level constraint or an @AssertTrue method."],
+    { code: `@Target({ElementType.FIELD, ElementType.RECORD_COMPONENT}) @Retention(RetentionPolicy.RUNTIME) @Constraint(validatedBy = V.EvenValidator.class)
+@interface Even { String message() default "must be even"; Class<?>[] groups() default {}; Class<? extends Payload>[] payload() default {}; }
+class V { public static class EvenValidator implements ConstraintValidator<Even, Integer> { public boolean isValid(Integer v, ConstraintValidatorContext c) { return v == null || v % 2 == 0; } } }
+record Pack(@Even Integer size) { }
+Validator val = Validation.buildDefaultValidatorFactory().getValidator();
+System.out.println(val.validate(new Pack(3)).iterator().next().getMessage() + " / " + val.validate(new Pack(4)).size());` });
+  Q(SB, "Validation & errors", "Medium", false, "S05", "What are validation groups and when would you use them?", [
+    "Groups (marker interfaces) let different constraints apply in different contexts, e.g. id null on create, required on update.",
+    "Select with @Validated(OnUpdate.class) or validator.validate(obj, Group.class); constraints without groups are in Default.",
+    "Often separate DTOs per operation are clearer than many groups."]);
+  Q(SB, "Validation & errors", "Medium", true, "S05", "MethodArgumentNotValidException vs ConstraintViolationException vs HandlerMethodValidationException?", [
+    "MethodArgumentNotValidException: @Valid @RequestBody/@ModelAttribute failed in a controller.",
+    "HandlerMethodValidationException: Spring 6.1+ built-in validation of constraints on controller method parameters (@PathVariable, @RequestParam).",
+    "ConstraintViolationException: method validation on @Validated beans (services) via the AOP post-processor; map it to 400 if it can reach the web layer."]);
+  Q(SB, "Validation & errors", "Hard", true, "S05", "Where should validation live: controller, service, domain or database?", [
+    "Controller/DTO: format and presence rules at the API boundary.",
+    "Service: business rules needing data or context, and @Validated for non-HTTP callers.",
+    "Domain: invariants enforced in constructors/factories.",
+    "Database: NOT NULL/UNIQUE/CHECK constraints as the final guarantee against races (map violations to 409)."]);
+  Q(SB, "Validation & errors", "Hard", true, "S05", "How do you log and trace errors across services?", [
+    "Correlation/trace id per request (reuse incoming header or traceparent via Micrometer Tracing), stored in MDC, propagated on outgoing calls, returned to clients.",
+    "Log once at the boundary: 4xx without stacks, 5xx at ERROR with stack; never log secrets or full PII.",
+    "Clear MDC in finally (pooled threads); centralise logs and search by id."],
+    { code: `ExecutorService pool = Executors.newSingleThreadExecutor();
+pool.submit(() -> { MDC.put("cid", "req-1"); try { /* handle request */ } finally { MDC.remove("cid"); } }).get();
+System.out.println("next request sees cid = " + pool.submit(() -> MDC.get("cid")).get());
+pool.shutdown();` });
+
+  Q(SB, "JPA & Hibernate", "Easy", true, "S06", "What is the difference between JPA, Hibernate and Spring Data JPA?", [
+    "JPA is the Jakarta specification (annotations + EntityManager API).",
+    "Hibernate is the most common JPA implementation: SQL generation, dirty checking, caching.",
+    "Spring Data JPA generates repository implementations (CRUD, derived queries, paging) on top of JPA."]);
+  Q(SB, "JPA & Hibernate", "Easy", true, "S06", "What are the default fetch types, and what should you use?", [
+    "@ManyToOne and @OneToOne default to EAGER; @OneToMany and @ManyToMany default to LAZY.",
+    "Use LAZY everywhere and fetch what each use case needs explicitly (fetch join, entity graph, DTO)."]);
+  Q(SB, "JPA & Hibernate", "Medium", true, "S06", "What is the N+1 problem and how do you fix it?", [
+    "One query loads N parents, then accessing a lazy association on each triggers N more queries.",
+    "Fixes: join fetch, @EntityGraph, DTO projections, batch fetching (default_batch_fetch_size / @BatchSize).",
+    "Detect with SQL logs, Hibernate statistics, or query-count assertions in tests."],
+    { code: `@Entity class City { @Id @GeneratedValue Long id; String name; protected City() { } City(String n) { name = n; } String getName() { return name; } }
+@Entity class Shop { @Id @GeneratedValue Long id; @ManyToOne(fetch = FetchType.LAZY) City city; protected Shop() { } Shop(City c) { city = c; } City getCity() { return city; } }
+interface ShopRepo extends JpaRepository<Shop, Long> { @EntityGraph(attributePaths = "city") @Query("select s from Shop s") List<Shop> withCity(); }
+@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class, "--spring.jpa.properties.hibernate.generate_statistics=true")) {
+    var tx = ctx.getBean(org.springframework.transaction.support.TransactionTemplate.class);
+    var st = ctx.getBean(EntityManagerFactory.class).unwrap(org.hibernate.SessionFactory.class).getStatistics();
+    ShopRepo r = ctx.getBean(ShopRepo.class);
+    tx.executeWithoutResult(s -> { EntityManager em = ctx.getBean(EntityManager.class); for (int i = 0; i < 6; i++) { City c = new City("c" + i); em.persist(c); em.persist(new Shop(c)); } });
+    st.clear(); tx.executeWithoutResult(s -> r.findAll().forEach(x -> x.getCity().getName()));
+    long lazy = st.getPrepareStatementCount();
+    st.clear(); tx.executeWithoutResult(s -> r.withCity().forEach(x -> x.getCity().getName()));
+    System.out.println("lazy: " + lazy + " queries, entity graph: " + st.getPrepareStatementCount());
+}` });
+  Q(SB, "JPA & Hibernate", "Medium", true, "S06", "What is the persistence context (first-level cache)?", [
+    "Per-EntityManager (per transaction in Spring) map of managed entities by id.",
+    "Repeated finds return the same instance without SQL; it enables dirty checking and write-behind flushing.",
+    "It is not shared between transactions; the second-level cache (optional) is shared across sessions."]);
+  Q(SB, "JPA & Hibernate", "Medium", true, "S06", "What is dirty checking?", [
+    "At flush, Hibernate compares managed entities with their loaded snapshots and issues UPDATEs for changed ones.",
+    "So you don't call save() on managed entities; changes to detached entities are ignored unless merged.",
+    "Large persistence contexts make flushes slow: flush/clear periodically in batch jobs."]);
+  Q(SB, "JPA & Hibernate", "Medium", true, "S06", "What causes LazyInitializationException and how do you fix it?", [
+    "Accessing an uninitialised lazy association after the session/transaction has closed.",
+    "Fix by fetching what's needed inside a transactional service (fetch join, entity graph), returning DTOs, or initialising explicitly.",
+    "Don't rely on open-in-view or enable_lazy_load_no_trans; they hide the problem and add hidden queries."],
+    { code: `@Entity class Album { @Id @GeneratedValue Long id; @ElementCollection List<String> tracks = new ArrayList<>(); }
+interface AlbumRepo extends JpaRepository<Album, Long> { }
+@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class, "--spring.jpa.open-in-view=false")) {
+    AlbumRepo r = ctx.getBean(AlbumRepo.class);
+    Album a = new Album(); a.tracks.add("Kesariya"); Long id = r.save(a).id;
+    try { r.findById(id).orElseThrow().tracks.size(); } catch (org.hibernate.LazyInitializationException e) { System.out.println(e.getClass().getSimpleName()); }
+}` });
+  Q(SB, "JPA & Hibernate", "Medium", false, "S06", "What do cascade and orphanRemoval do? When should you use them?", [
+    "Cascade propagates persist/merge/remove from parent to children; orphanRemoval deletes children removed from the parent's collection.",
+    "Use for composition (order → order lines). Never cascade REMOVE to shared entities or across many-to-many."]);
+  Q(SB, "JPA & Hibernate", "Medium", true, "S06", "How do projections work in Spring Data JPA?", [
+    "Interface projections (getters matching properties or aliases), class/record DTO projections (constructor parameters), and dynamic projections (<T> List<T> findBy…(Class<T>)).",
+    "They fetch only the needed columns, skip dirty checking and avoid lazy-loading issues; ideal for read-only views."]);
+  Q(SB, "JPA & Hibernate", "Hard", true, "S06", "Why is join fetching a collection with pagination a problem?", [
+    "Rows multiply per child, so SQL LIMIT/OFFSET can't paginate parents; Hibernate fetches all rows and paginates in memory (warning HHH90003004).",
+    "Instead page parent ids first, then fetch those parents with their collections, or page parents and use batch fetching.",
+    "hibernate.query.fail_on_pagination_over_collection_fetch=true turns the warning into an error."]);
+  Q(SB, "JPA & Hibernate", "Hard", false, "S06", "How do you manage schema changes in a Spring Boot application?", [
+    "Versioned migrations with Flyway (V1__x.sql in db/migration, tracked in flyway_schema_history with checksums) or Liquibase changelogs.",
+    "Never edit applied migrations; use ddl-auto=validate (or none) in production.",
+    "Zero-downtime: expand-and-contract across releases (add, backfill, switch, drop later)."]);
+
+  Q(SB, "Transactions", "Easy", true, "S07", "How does @Transactional work internally?", [
+    "Spring creates an AOP proxy around the bean; the TransactionInterceptor begins or joins a transaction via the PlatformTransactionManager, invokes the method, then commits or rolls back.",
+    "The connection/EntityManager is bound to the current thread for the duration.",
+    "Only calls through the proxy are transactional."],
+    { code: `@Service class S { @Transactional public boolean inTx() { return TransactionSynchronizationManager.isActualTransactionActive(); } }
+@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class)) { S s = ctx.getBean(S.class); System.out.println(AopUtils.isAopProxy(s) + " " + s.inTx()); }` });
+  Q(SB, "Transactions", "Easy", true, "S07", "Why doesn't @Transactional work on self-invocation or private methods?", [
+    "A call like this.method() goes straight to the target object, bypassing the proxy and its interceptor.",
+    "Private methods can't be intercepted by proxies at all.",
+    "Fix: move the method into another bean, annotate the public entry point, or use TransactionTemplate."]);
+  Q(SB, "Transactions", "Easy", true, "S07", "Which exceptions trigger a rollback by default?", [
+    "Unchecked exceptions (RuntimeException and Error) roll back; checked exceptions commit.",
+    "Change with rollbackFor / noRollbackFor; a caught exception never reaches the proxy, so it doesn't roll back."],
+    { code: `@Service class S {
+    final JdbcTemplate jdbc; S(JdbcTemplate j) { jdbc = j; }
+    @Transactional public void checked() throws Exception { jdbc.update("insert into t values ('checked')"); throw new Exception("x"); }
+    @Transactional public void unchecked() { jdbc.update("insert into t values ('unchecked')"); throw new IllegalStateException("x"); }
+}
+@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class)) {
+    JdbcTemplate jdbc = ctx.getBean(JdbcTemplate.class); jdbc.execute("create table t(v varchar(10))");
+    S s = ctx.getBean(S.class);
+    try { s.checked(); } catch (Exception e) { } try { s.unchecked(); } catch (Exception e) { }
+    System.out.println(jdbc.queryForList("select v from t", String.class));
+}` });
+  Q(SB, "Transactions", "Medium", true, "S07", "Explain the propagation types REQUIRED, REQUIRES_NEW and NESTED.", [
+    "REQUIRED (default): join the current transaction or start one; a failure anywhere rolls back everything.",
+    "REQUIRES_NEW: suspend the current transaction and run in an independent one that commits/rolls back on its own (separate connection).",
+    "NESTED: savepoint inside the current transaction; inner failure rolls back to the savepoint, outer failure rolls back all (JDBC managers only).",
+    "Others: SUPPORTS, MANDATORY, NOT_SUPPORTED, NEVER."]);
+  Q(SB, "Transactions", "Medium", true, "S07", "What causes UnexpectedRollbackException?", [
+    "An inner REQUIRED @Transactional method threw a rollback-triggering exception, marking the shared transaction rollback-only; the outer method caught it and tried to commit.",
+    "Fix: don't use exceptions for expected outcomes, use noRollbackFor, or isolate the step with REQUIRES_NEW/NESTED."],
+    { code: `@Service class Inner { @Transactional public void fail() { throw new IllegalArgumentException("nope"); } }
+@Service class Outer { final Inner in; Outer(Inner i) { in = i; } @Transactional public void run() { try { in.fail(); } catch (IllegalArgumentException e) { } } }
+@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class)) {
+    try { ctx.getBean(Outer.class).run(); } catch (UnexpectedRollbackException e) { System.out.println(e.getClass().getSimpleName()); }
+}` });
+  Q(SB, "Transactions", "Medium", true, "S07", "What are isolation levels and which anomalies do they prevent?", [
+    "READ_UNCOMMITTED allows dirty reads; READ_COMMITTED prevents dirty reads; REPEATABLE_READ also prevents non-repeatable reads; SERIALIZABLE also prevents phantoms.",
+    "Spring's default (Isolation.DEFAULT) uses the database's level, usually READ COMMITTED (MySQL InnoDB: REPEATABLE READ).",
+    "Lost updates need locking, @Version or atomic SQL in most setups."]);
+  Q(SB, "Transactions", "Medium", true, "S07", "Optimistic vs pessimistic locking?", [
+    "Optimistic: @Version column checked on update; conflicts raise an exception (409/retry). No locks held; best for low contention and long user think time.",
+    "Pessimistic: SELECT … FOR UPDATE (@Lock(PESSIMISTIC_WRITE)); others wait. Best for short, high-contention updates; watch deadlocks and timeouts."],
+    { code: `@Entity class Doc { @Id Long id; String text; @Version Integer version; protected Doc() { } Doc(Long id) { this.id = id; } }
+interface DocRepo extends JpaRepository<Doc, Long> { }
+@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class)) {
+    DocRepo r = ctx.getBean(DocRepo.class); r.save(new Doc(1L));
+    Doc a = r.findById(1L).orElseThrow(), b = r.findById(1L).orElseThrow();
+    a.text = "A"; r.save(a); b.text = "B";
+    try { r.save(b); } catch (ObjectOptimisticLockingFailureException e) { System.out.println("conflict detected; text=" + r.findById(1L).orElseThrow().text); }
+}` });
+  Q(SB, "Transactions", "Medium", false, "S07", "What does readOnly = true do?", [
+    "Hint that no writes happen: with JPA, Spring sets flush mode MANUAL and a read-only session (no dirty checking/snapshots), and marks the JDBC connection read-only.",
+    "Routing data sources can send read-only transactions to replicas. It is not a security guarantee."]);
+  Q(SB, "Transactions", "Hard", true, "S07", "Why should you avoid remote calls inside a transaction, and what do you do instead?", [
+    "The transaction holds a DB connection and maybe locks for the whole call; slow services exhaust the pool and cause lock contention.",
+    "Remote side effects can't be rolled back with the DB, so failures leave inconsistency.",
+    "Instead: short local transactions, state machines (PENDING → CONFIRMED), transactional outbox, idempotent retries and sagas."]);
+  Q(SB, "Transactions", "Hard", true, "S07", "How do you prevent overselling the last item under concurrency?", [
+    "Atomic conditional update (update stock set qty = qty - 1 where id = ? and qty > 0) and check the affected row count.",
+    "Or pessimistic lock the row (SELECT … FOR UPDATE) in a short transaction, or @Version with retries for low contention.",
+    "Plain read-modify-write in READ COMMITTED loses updates."],
+    { code: `@SpringBootApplication class App { }
+try (var ctx = SpringApplication.run(App.class)) {
+    JdbcTemplate jdbc = ctx.getBean(JdbcTemplate.class);
+    jdbc.execute("create table stock(sku varchar(10), qty int)"); jdbc.update("insert into stock values ('PS5', 5)");
+    AtomicInteger sold = new AtomicInteger();
+    try (ExecutorService pool = Executors.newFixedThreadPool(8)) {
+        for (int i = 0; i < 50; i++) pool.submit(() -> { if (jdbc.update("update stock set qty = qty - 1 where sku = 'PS5' and qty > 0") == 1) sold.incrementAndGet(); });
+    }
+    System.out.println("sold " + sold.get() + ", left " + jdbc.queryForObject("select qty from stock", Integer.class));
+}` });
+
   window.JAVA_IQ = QS;
 })();
