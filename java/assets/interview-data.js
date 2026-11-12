@@ -1330,5 +1330,149 @@ System.out.println("allowed " + ok + " of 10");` });
     "Assert invariants (totals, no duplicates, ordering) and use timeouts so deadlocks fail tests.",
     "Vary capacities/thread counts; use jcstress for memory-model questions; thread dumps on hang."]);
 
+  var SP = "Spring core";
+  Q(SP, "IoC & DI", "Easy", true, "S01", "What are IoC and dependency injection in Spring?", [
+    "IoC: the container, not your code, creates objects and supplies their dependencies.",
+    "DI: dependencies are passed in through constructors, setters or fields.",
+    "The ApplicationContext reads configuration, creates and wires beans, manages scopes and lifecycle, and applies proxies.",
+    "Benefits: loose coupling, testability, central configuration."]);
+  Q(SP, "IoC & DI", "Easy", true, "S01", "Constructor vs setter vs field injection: which do you prefer and why?", [
+    "Constructor injection: explicit required dependencies, final fields, always valid objects, easy unit tests; preferred.",
+    "Setter: optional dependencies. Field: concise but hides dependencies and hampers testing."],
+    { code: `@Component class Repo { String find() { return "row"; } }
+@Component class Service { private final Repo repo; Service(Repo repo) { this.repo = repo; } String get() { return repo.find(); } }
+@Configuration @ComponentScan class Cfg { }
+try (var ctx = new AnnotationConfigApplicationContext(Cfg.class)) { System.out.println(ctx.getBean(Service.class).get()); }` });
+  Q(SP, "IoC & DI", "Easy", false, "S01", "@Component vs @Bean?", [
+    "@Component (and @Service, @Repository, @Controller) marks your own classes for component scanning.",
+    "@Bean methods in @Configuration classes create beans from code: third-party classes or custom construction.",
+    "@Configuration classes are proxied so inter-@Bean calls return the singleton."]);
+  Q(SP, "IoC & DI", "Medium", true, "S01", "How do you resolve multiple beans of the same type?", [
+    "@Primary marks the default; @Qualifier(\"name\") picks explicitly; a parameter name matching the bean name also works.",
+    "Inject List<T> or Map<String, T> to get all implementations (strategy pattern)."],
+    { code: `interface Sender { String send(); }
+@Component("sms") class Sms implements Sender { public String send() { return "sms"; } }
+@Component("mail") @Primary class Mail implements Sender { public String send() { return "mail"; } }
+@Component class User { final Sender d, q; User(Sender d, @Qualifier("sms") Sender q) { this.d = d; this.q = q; } }
+@Configuration @ComponentScan class Cfg { }
+try (var ctx = new AnnotationConfigApplicationContext(Cfg.class)) { User u = ctx.getBean(User.class); System.out.println(u.d.send() + " " + u.q.send()); }` });
+  Q(SP, "Scopes", "Easy", true, "S01", "What bean scopes does Spring support?", [
+    "singleton (default, one per container), prototype (new per request for the bean).",
+    "Web: request, session, application, websocket.",
+    "Singletons are shared across threads, so keep them stateless or thread-safe."]);
+  Q(SP, "Scopes", "Medium", true, "S01", "How do you use a prototype or request-scoped bean inside a singleton?", [
+    "Direct injection happens once, so the singleton keeps one instance.",
+    "Use ObjectProvider<T>.getObject(), a @Lookup method, or a scoped proxy (proxyMode = TARGET_CLASS, standard for request/session).",
+    "Prototype beans don't receive destroy callbacks."],
+    { code: `@Component @Scope("prototype") class Draft { }
+@Component class Editor { final ObjectProvider<Draft> drafts; Editor(ObjectProvider<Draft> d) { drafts = d; } boolean fresh() { return drafts.getObject() != drafts.getObject(); } }
+@Configuration @ComponentScan class Cfg { }
+try (var ctx = new AnnotationConfigApplicationContext(Cfg.class)) { System.out.println("new instance each time: " + ctx.getBean(Editor.class).fresh()); }` });
+  Q(SP, "Lifecycle", "Medium", true, "S01", "Explain the Spring bean lifecycle.", [
+    "Instantiate → inject dependencies → Aware callbacks → BeanPostProcessor before-init.",
+    "@PostConstruct → afterPropertiesSet → initMethod → BeanPostProcessor after-init (proxies) → ready.",
+    "Shutdown (singletons): @PreDestroy → DisposableBean.destroy → destroyMethod. SmartLifecycle adds ordered start/stop."]);
+  Q(SP, "Lifecycle", "Hard", false, "S01", "What are BeanPostProcessor and BeanFactoryPostProcessor?", [
+    "BeanFactoryPostProcessor modifies bean definitions before beans are created (e.g. placeholder resolution).",
+    "BeanPostProcessor intercepts bean instances around initialisation and can return a replacement (AOP proxies, @Autowired processing).",
+    "Most Spring annotations are implemented this way."]);
+  Q(SP, "Proxies & AOP", "Medium", true, "S01", "JDK dynamic proxy vs CGLIB proxy in Spring?", [
+    "JDK proxies implement the bean's interfaces; callers must use the interface type.",
+    "CGLIB generates a subclass of the bean class; Spring Boot uses it by default.",
+    "CGLIB can't advise final classes or methods; neither intercepts private methods or self-invocation."]);
+  Q(SP, "Proxies & AOP", "Medium", true, "S01", "Why doesn't an annotation like @Transactional or @Async work when a method calls another method of the same bean?", [
+    "These features are implemented by a proxy around the bean.",
+    "An internal call (this.method()) goes to the target directly and skips the proxy.",
+    "Fix: move the method to another bean, self-inject the proxy (@Lazy), or use programmatic APIs (TransactionTemplate)."]);
+
+  var SB = "Spring Boot";
+  Q(SB, "Auto-configuration", "Easy", true, "S02", "What is Spring Boot and how does it differ from Spring Framework?", [
+    "Boot builds on Spring Framework with opinionated defaults: starters, auto-configuration, embedded server, executable jars, externalised config, Actuator.",
+    "Spring Framework provides the container, MVC, data and transactions; Boot configures them for you and backs off when you configure them yourself."]);
+  Q(SB, "Auto-configuration", "Easy", true, "S02", "What does @SpringBootApplication include?", [
+    "@SpringBootConfiguration (a @Configuration), @EnableAutoConfiguration and @ComponentScan of the class's package.",
+    "Keep the main class in the root package so sub-packages are scanned."],
+    { code: `System.out.println(Arrays.stream(SpringBootApplication.class.getAnnotations()).map(a -> a.annotationType().getSimpleName()).filter(n -> n.startsWith("Spring") || n.startsWith("Enable") || n.startsWith("Component")).toList());` });
+  Q(SB, "Auto-configuration", "Medium", true, "S02", "How does auto-configuration work internally?", [
+    "@EnableAutoConfiguration loads class names from META-INF/spring/…AutoConfiguration.imports (spring.factories before 2.7).",
+    "Removes exclusions, orders them (before/after), imports them after user configuration.",
+    "Conditions (@ConditionalOnClass, @ConditionalOnMissingBean, @ConditionalOnProperty…) decide which apply."]);
+  Q(SB, "Auto-configuration", "Medium", true, "S02", "What are conditional annotations? Give examples.", [
+    "Annotations that register a configuration or bean only if a condition holds.",
+    "@ConditionalOnClass, @ConditionalOnMissingBean, @ConditionalOnBean, @ConditionalOnProperty (matchIfMissing), @ConditionalOnWebApplication, @ConditionalOnExpression."],
+    { code: `interface Cache { String name(); }
+@Configuration class Cfg { @Bean @ConditionalOnProperty(name = "cache.kind", havingValue = "redis") Cache redis() { return () -> "redis"; } @Bean @ConditionalOnMissingBean Cache local() { return () -> "local"; } }
+new ApplicationContextRunner().withUserConfiguration(Cfg.class).run(c -> System.out.println(c.getBean(Cache.class).name()));` });
+  Q(SB, "Auto-configuration", "Medium", true, "S02", "How do you override or disable an auto-configured bean?", [
+    "Define your own bean of that type: @ConditionalOnMissingBean makes Boot back off.",
+    "Tune with properties or customizer beans first; exclude whole auto-configurations with exclude/excludeName or spring.autoconfigure.exclude."]);
+  Q(SB, "Auto-configuration", "Medium", false, "S02", "How do you debug which auto-configurations were applied?", [
+    "--debug / debug=true prints the condition evaluation report (positive, negative matches, exclusions).",
+    "Actuator /actuator/conditions and /actuator/beans in a running app.",
+    "FailureAnalyzers explain common startup failures."]);
+  Q(SB, "Starters", "Easy", true, "S02", "What are Spring Boot starters?", [
+    "Dependency descriptors bundling the libraries for a capability (web, data-jpa, security, test…).",
+    "Versions are managed by Boot's BOM (parent or spring-boot-dependencies import), so you omit versions."]);
+  Q(SB, "Starters", "Hard", false, "S02", "How do you create a custom Spring Boot starter?", [
+    "An autoconfigure module: @AutoConfiguration classes with conditions, @ConfigurationProperties, registered in AutoConfiguration.imports.",
+    "A starter module that just depends on the autoconfigure module and libraries.",
+    "Back off with @ConditionalOnMissingBean, provide an enabled flag, avoid component scanning, test with ApplicationContextRunner."],
+    { code: `interface Clock2 { String now(); }
+@AutoConfiguration class ClockAutoConfig { @Bean @ConditionalOnMissingBean Clock2 clock() { return () -> "12:00"; } }
+ApplicationContextRunner r = new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(ClockAutoConfig.class));
+r.run(c -> System.out.println("default " + c.getBean(Clock2.class).now()));
+r.withBean(Clock2.class, () -> () -> "mine").run(c -> System.out.println("override " + c.getBean(Clock2.class).now()));` });
+  Q(SB, "Startup", "Medium", false, "S02", "What happens when SpringApplication.run() is called?", [
+    "Environment prepared (property sources, profiles), context created for the web type, initializers applied.",
+    "Refresh: bean definitions incl. auto-config, post-processors, singletons, embedded server start.",
+    "Runners execute, then ApplicationReadyEvent."]);
+  Q(SB, "Startup", "Easy", false, "S02", "CommandLineRunner vs ApplicationRunner vs ApplicationReadyEvent?", [
+    "Both runners execute after the context refresh: CommandLineRunner gets raw String args, ApplicationRunner parsed ApplicationArguments.",
+    "ApplicationReadyEvent is published after runners, when the app is ready to serve."]);
+
+  Q(SB, "Configuration", "Easy", true, "S03", "What is the order of precedence for Spring Boot property sources?", [
+    "Highest to lowest: command-line args, SPRING_APPLICATION_JSON, Java system properties, OS environment variables, profile-specific files (outside then inside the jar), application files (outside then inside), @PropertySource, default properties.",
+    "Precedence applies per key."]);
+  Q(SB, "Configuration", "Easy", true, "S03", "What are profiles and how do you use them?", [
+    "Named environment variants activated with spring.profiles.active (or SPRING_PROFILES_ACTIVE).",
+    "They load application-{profile} files, apply on-profile documents and register @Profile beans; groups bundle several."],
+    { code: `interface Mailer { String kind(); }
+@Configuration class Cfg { @Bean @Profile("prod") Mailer smtp() { return () -> "smtp"; } @Bean @Profile("!prod") Mailer log() { return () -> "log only"; } }
+new ApplicationContextRunner().withUserConfiguration(Cfg.class).withPropertyValues("spring.profiles.active=prod").run(c -> System.out.println(c.getBean(Mailer.class).kind()));` });
+  Q(SB, "Configuration", "Medium", true, "S03", "@Value vs @ConfigurationProperties?", [
+    "@Value injects single values with ${key:default} placeholders and SpEL.",
+    "@ConfigurationProperties binds a prefix to a typed class/record: nesting, collections, Duration/DataSize, relaxed binding, validation, IDE metadata.",
+    "Prefer @ConfigurationProperties for groups of settings."],
+    { code: `@ConfigurationProperties(prefix = "app") record AppProps(String name, @DefaultValue("3") int retries) { }
+@Configuration @EnableConfigurationProperties(AppProps.class) class Cfg { }
+new ApplicationContextRunner().withUserConfiguration(Cfg.class).withPropertyValues("app.name=fares").run(c -> System.out.println(c.getBean(AppProps.class)));` });
+  Q(SB, "Configuration", "Medium", false, "S03", "What is relaxed binding? How do you set shop.max-items via an environment variable?", [
+    "Boot maps kebab-case, camelCase, underscore and uppercase forms to the same property for @ConfigurationProperties.",
+    "Env var: replace dots with underscores, remove dashes, uppercase: SHOP_MAXITEMS. Lists: SHOP_ITEMS_0_."]);
+  Q(SB, "Configuration", "Medium", true, "S03", "How do you manage secrets in Spring Boot?", [
+    "Never commit them; inject via environment variables or mounted files (Kubernetes Secrets with configtree:).",
+    "Or fetch from Vault / cloud secret managers through spring.config.import integrations.",
+    "Mask in Actuator, never log, rotate, separate per environment."]);
+  Q(SB, "Configuration", "Medium", false, "S03", "How do you validate configuration properties?", [
+    "Add @Validated to the @ConfigurationProperties type and Bean Validation constraints.",
+    "Binding fails at startup with a clear message, so misconfiguration never reaches traffic."],
+    { code: `@ConfigurationProperties(prefix = "pay") @Validated record PayProps(@NotBlank String url) { }
+@Configuration @EnableConfigurationProperties(PayProps.class) class Cfg { }
+new ApplicationContextRunner().withUserConfiguration(Cfg.class).withPropertyValues("pay.url=").run(c -> System.out.println("startup failed: " + (c.getStartupFailure() != null)));` });
+  Q(SB, "Configuration", "Easy", false, "S03", "application.properties vs application.yml?", [
+    "Equivalent; YAML is more readable for hierarchies and lists and supports --- multi-document files.",
+    "If both define a key, properties takes precedence; beware YAML type coercion (on/off, leading zeros)."]);
+  Q(SB, "Configuration", "Medium", false, "S03", "How do you externalise configuration for Kubernetes?", [
+    "Environment variables in the Deployment (SPRING_PROFILES_ACTIVE, SPRING_DATASOURCE_URL).",
+    "ConfigMaps/Secrets mounted as files read with spring.config.import=configtree:/path/.",
+    "Changes need a restart unless you use a reload mechanism (Spring Cloud Kubernetes)."]);
+  Q(SB, "Configuration", "Hard", false, "S03", "A property has an unexpected value in production. How do you debug it?", [
+    "GET /actuator/env/{key}: every defining source and the effective value.",
+    "Check active profiles, env vars, -D flags, command-line args and external config files.",
+    "Use /actuator/configprops for bound values; fix at the owning layer."]);
+  Q(SB, "Configuration", "Easy", false, "S03", "How do you provide a default for a missing property?", [
+    "@Value(\"${key:default}\"), @DefaultValue on @ConfigurationProperties record components, or field initialisers in JavaBean-style properties classes.",
+    "Don't default values that must be set explicitly in production; validate them instead."]);
+
   window.JAVA_IQ = QS;
 })();
