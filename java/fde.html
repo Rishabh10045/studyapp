@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forward Deployed Engineer (FDE) Roadmap</title>
+  <meta name="description" content="What a Forward Deployed Engineer does (from public job postings), a skills map, a week-by-week plan linked to HLD, LLD, Java and Spring lessons, project ideas and interview-loop practice.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
+  <script src="assets/data.js" defer></script>
+  <script src="assets/lessons/manifest.js" defer></script>
+  <script src="assets/fde.js" defer></script>
+  <style>
+    .src { font-size: 12px; color: var(--text-3); }
+    .src a { color: var(--text-3); }
+    .skill-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) 2fr minmax(150px, 1fr); gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+    .skill-row:first-child { border-top: 0; }
+    .skill-row .lv { display: inline-flex; gap: 4px; }
+    .skill-row .lv button { font: inherit; font-size: 12px; padding: 3px 8px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text-2); cursor: pointer; }
+    .skill-row .lv button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .week td:first-child { white-space: nowrap; }
+    @media (max-width: 760px) { .skill-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">Java Study<span class="tag">Java 17/21 · interviews &amp; work</span></span>
+    <nav><a href="index.html">Teaching App</a><a href="roadmap.html">Roadmap</a><a href="interview.html">Interview Questions</a><a href="fde.html" class="active">FDE Roadmap</a><a href="../lld/roadmap.html" title="Low-Level Design app">LLD</a><a href="../index.html" title="Back to the High-Level Design (HLD) app">← HLD app</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>Forward Deployed Engineer (FDE) Roadmap</h1>
+    <p class="summary">A plan for Deepak to move toward forward-deployed engineering roles: what the job is according to public postings, the skills it needs, a week-by-week plan built on the HLD, LLD, Java and Spring lessons, portfolio projects and interview-loop practice.</p>
+
+    <nav class="toc" aria-label="Contents"><ol>
+      <li><a href="#role">What the role is</a></li>
+      <li><a href="#skills">Skills map &amp; self-assessment</a></li>
+      <li><a href="#plan">Week-by-week plan</a></li>
+      <li><a href="#projects">Project ideas</a></li>
+      <li><a href="#loop">Interview loop prep</a></li>
+      <li><a href="#practice">Practice questions</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ol></nav>
+
+    <section class="sec" id="role">
+      <h2>What the role is</h2>
+      <p class="caption">Summarised from public job postings and third-party analyses read on 12 Nov 2026 (links in <a href="#sources">Sources</a>). Postings change often; treat specifics such as years of experience as examples, not rules.</p>
+      <div class="diagram" id="dg-role"></div>
+      <div id="role-points"></div>
+      <h3>What postings ask for</h3>
+      <div class="tablewrap" id="role-table"></div>
+    </section>
+
+    <section class="sec" id="skills">
+      <h2>Skills map &amp; self-assessment</h2>
+      <p class="caption">Rate yourself 0–3 on each area (saved in this browser under <code>java.fde.v1</code>). The plan below highlights the weeks that close your biggest gaps.</p>
+      <div class="card" id="skills-list"></div>
+      <div class="metrics" id="skills-metrics" style="margin-top:12px"></div>
+      <div class="result" id="skills-advice" style="margin-top:12px"></div>
+    </section>
+
+    <section class="sec" id="plan">
+      <h2>Week-by-week plan</h2>
+      <p class="caption">16 weeks at roughly 8–10 hours a week, in four phases. Tick weeks as you finish them. Lesson links open the HLD, LLD, Java or Spring lesson (HLD/LLD links work in the combined study site); locked Java/Spring lessons are still on the roadmap.</p>
+      <div class="metrics" id="plan-metrics"></div>
+      <div class="tablewrap" id="plan-table"></div>
+    </section>
+
+    <section class="sec" id="projects">
+      <h2>Project ideas</h2>
+      <p class="caption">Each one mirrors work described in FDE postings: integrating with messy customer systems, shipping an LLM feature with evaluation, and operating it.</p>
+      <div class="grid2" id="project-cards"></div>
+    </section>
+
+    <section class="sec" id="loop">
+      <h2>Interview loop prep</h2>
+      <p class="caption">Loops differ by company. The rounds below are the ones public postings and candidate reports mention most; third-party reports are labelled as such.</p>
+      <div class="tablewrap" id="loop-table"></div>
+      <h3>A framework for the decomposition / customer case</h3>
+      <div class="diagram" id="dg-decomp"></div>
+      <ol class="steps" id="decomp-steps"></ol>
+    </section>
+
+    <section class="sec" id="practice">
+      <h2>Practice questions</h2>
+      <p class="caption">Answer out loud or on paper first, then open the model answer.</p>
+      <div class="btnrow"><button class="btn" id="open-all" type="button">Open all</button><button class="btn" id="close-all" type="button">Close all</button></div>
+      <div id="practice-list" style="margin-top:12px"></div>
+    </section>
+
+    <section class="sec" id="sources">
+      <h2>Sources</h2>
+      <ol id="source-list"></ol>
+    </section>
+
+    <section class="sec" id="more">
+      <h2>Keep going</h2>
+      <div class="links"><a href="roadmap.html">Java Study Roadmap<span class="s">Java and Spring Boot tracks</span></a><a href="interview.html">Java interview questions<span class="s">Model answers with filters and bookmarks</span></a><a href="../roadmap.html">HLD roadmap<span class="s">System design (combined study site)</span></a><a href="../lld/roadmap.html">LLD roadmap<span class="s">OOP, patterns, machine coding (combined study site)</span></a></div>
+    </section>
+  </main>
+  <a class="btn backtop" href="#">↑ Top</a>
+</body>
+</html>

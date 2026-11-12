@@ -38,6 +38,7 @@ You can also open `index.html` straight from disk. The diagrams need internet ac
 | `assets/style.css` | Styles, with light and dark mode following the OS setting |
 | `favicon.svg` | Site icon |
 | `lld/` | Low-Level Design (LLD) companion app: its own Teaching App, Roadmap and Interview Questions (`lld/roadmap.html`); progress uses separate `lld.*` localStorage keys |
+| `java/` | Java Study companion app: Java 17/21 + Spring Boot/Spring AI lessons, Roadmap, Interview Questions and an FDE roadmap (`java/roadmap.html`, `java/fde.html`); progress uses separate `java.*` localStorage keys |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
 
 ## Dependencies

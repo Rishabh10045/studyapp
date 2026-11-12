@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Java Teaching App</title>
+  <meta name="description" content="Lesson player for Java (17/21) interview prep and day-to-day work: step-by-step slides with diagrams and runnable Java, interactive models, quizzes, practice questions and cheat sheets.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
+  <script src="assets/data.js" defer></script>
+  <script src="assets/lesson-kit.js" defer></script>
+  <script src="assets/lessons/manifest.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">Java Study<span class="tag">Java 17/21 · interviews &amp; work</span></span>
+    <nav><a href="index.html" class="active">Teaching App</a><a href="roadmap.html">Roadmap</a><a href="interview.html">Interview Questions</a><a href="fde.html">FDE Roadmap</a><a href="../lld/roadmap.html" title="Low-Level Design app">LLD</a><a href="../index.html" title="Back to the High-Level Design (HLD) app">← HLD app</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>Java Teaching App</h1>
+    <p class="summary">Deepak's lesson player for core Java, interviews and everyday work. Each lesson has step-by-step slides with diagrams and runnable Java code, an interactive model, real-world analogies, interview pitfalls, a quiz, a cheat sheet, practice questions with model answers and a recap. Progress is saved in this browser.</p>
+
+    <div class="player">
+      <aside class="sidebar" aria-label="Lessons">
+        <div class="g" style="margin-top:4px">Lessons · same order as the roadmap</div>
+        <div id="lesson-list"></div>
+      </aside>
+
+      <div id="content">
+        <div id="coming" hidden>
+          <section class="sec" style="margin-top:0">
+            <p class="caption"><span class="pill">🔒 Coming soon</span></p>
+            <h2 id="coming-title"></h2>
+            <p id="coming-why" style="color:var(--text-2)"></p>
+            <div class="card" style="margin-top:16px"><h3>What this lesson will cover</h3><ul id="coming-concepts"></ul></div>
+            <div class="callout info" style="margin-top:16px"><span class="lead">Locked</span>This lesson isn't written yet. Lessons are added in roadmap order.</div>
+            <div class="btnrow" style="margin-top:16px"><button class="btn primary" id="back-l1" type="button">Go to the next ready lesson</button></div>
+          </section>
+        </div>
+
+        <div id="lesson" hidden>
+          <p class="caption" id="lesson-kicker"></p>
+          <h2 id="lesson-title" style="font-size:26px;margin:0 0 6px"></h2>
+          <p id="lesson-summary" style="color:var(--text-2)"></p>
+          <div id="lesson-deps" class="sec" hidden style="margin-top:16px"></div>
+          <nav class="toc" aria-label="Lesson contents" style="margin-top:20px"><ol id="lesson-toc"></ol></nav>
+
+          <section class="sec" id="slides">
+            <h2 id="slide-title"></h2>
+            <div class="dots" id="dots"></div>
+            <div class="diagram" id="slide-diagram"></div>
+            <p id="slide-text"></p>
+            <ul id="slide-points"></ul>
+            <div class="analogy" id="slide-analogy" hidden></div>
+            <div id="slide-code" hidden></div>
+            <div class="proscons" id="slide-proscons" hidden></div>
+            <div class="tablewrap" id="slide-table" hidden></div>
+            <div class="btnrow">
+              <button class="btn" id="prev" type="button">Back</button>
+              <button class="btn primary" id="next" type="button">Next</button>
+            </div>
+            <p class="caption">Tip: use the ← and → arrow keys to move between steps.</p>
+          </section>
+
+          <section class="sec" id="widget" hidden>
+            <h2 id="widget-title"></h2>
+            <p class="caption" id="widget-caption"></p>
+            <div id="widget-body" style="display:flex;flex-direction:column;gap:16px"></div>
+          </section>
+
+          <section class="sec" id="examples">
+            <h2 id="examples-title">Real-world examples</h2>
+            <div class="rows" id="examples-list"></div>
+          </section>
+
+          <section class="sec" id="pitfalls">
+            <h2>Common interview pitfalls</h2>
+            <ul class="cons" id="pitfalls-list"></ul>
+          </section>
+
+          <section class="sec" id="quiz">
+            <h2 id="quiz-title"></h2>
+            <div class="btnrow"><button class="btn" id="reset-quiz" type="button">Reset quiz</button></div>
+            <div id="quiz-list"></div>
+          </section>
+
+          <section class="sec" id="cheatsheet" hidden>
+            <h2>Cheat sheet</h2>
+            <p class="caption">One screen to revise before an interview.</p>
+            <div class="tablewrap" id="cheat-table" hidden></div>
+            <div class="cheat" id="cheat-cards"></div>
+          </section>
+
+          <section class="sec" id="practice">
+            <h2>Practice questions</h2>
+            <p class="caption">Answer out loud (or sketch the code) first, then open the model answer.</p>
+            <div class="btnrow"><button class="btn" id="open-all" type="button">Open all answers</button><button class="btn" id="close-all" type="button">Close all</button></div>
+            <div id="practice-list"></div>
+          </section>
+
+          <section class="sec" id="recap">
+            <h2>Recap card</h2>
+            <div class="callout success"><ol id="recap-list"></ol></div>
+            <div class="btnrow"><button class="btn primary" id="complete" type="button"></button><button class="btn" id="next-lesson" type="button"></button></div>
+            <div class="links"><a href="roadmap.html">Back to the roadmap hub<span class="s">All modules, lessons and your progress</span></a><a href="interview.html">VIP Interview Questions<span class="s">Model answers for core Java, collections, concurrency and the JVM</span></a></div>
+          </section>
+        </div>
+        <p id="loading" hidden>Loading lesson…</p>
+      </div>
+    </div>
+  </main>
+  <a class="btn backtop" href="#">↑ Top</a>
+</body>
+</html>

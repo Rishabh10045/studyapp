@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Java Study Roadmap</title>
+  <meta name="description" content="Hub for Java 17/21 interview prep and work: core Java, collections, modern Java, a multithreading deep dive, JVM and GC, plus a Spring Boot and Spring AI track.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js" defer></script>
+  <script src="assets/data.js" defer></script>
+  <script src="assets/lessons/manifest.js" defer></script>
+  <script src="assets/roadmap.js" defer></script>
+</head>
+<body>
+  <header class="topnav">
+    <span class="brand">Java Study<span class="tag">Java 17/21 · interviews &amp; work</span></span>
+    <nav><a href="index.html">Teaching App</a><a href="roadmap.html" class="active">Roadmap</a><a href="interview.html">Interview Questions</a><a href="fde.html">FDE Roadmap</a><a href="../lld/roadmap.html" title="Low-Level Design app">LLD</a><a href="../index.html" title="Back to the High-Level Design (HLD) app">← HLD app</a></nav>
+  </header>
+  <main class="wrap">
+    <h1>Java Study Roadmap</h1>
+    <p class="summary" id="hub-summary">Deepak's hub for Java interviews and everyday Java work.</p>
+
+    <nav class="toc" aria-label="Contents"><ol>
+      <li><a href="#roadmap">Roadmap at a glance</a></li>
+      <li><a href="#modules">Modules</a></li>
+      <li><a href="#progress">Progress</a></li>
+      <li><a href="#explorer">Topic explorer</a></li>
+      <li><a href="#priority">Interview priorities</a></li>
+      <li><a href="#plan">Suggested study plan</a></li>
+      <li><a href="#jvm">The JVM at a glance</a></li>
+      <li><a href="#versions">Java versions that matter</a></li>
+      <li><a href="#next">How we'll use this hub</a></li>
+    </ol></nav>
+
+    <section class="sec" id="roadmap">
+      <h2>Roadmap at a glance</h2>
+      <div class="diagram" id="dg-roadmap"></div>
+      <p>Two tracks. The <strong>Java track</strong> (J01–J36) goes from language basics through collections, functional and modern Java, a full multithreading deep dive, and the JVM. The <strong>Spring Boot track</strong> (S01–S24) builds production services on top, ending with Spring AI. OOP, SOLID and design patterns live in the LLD app and are linked rather than repeated.</p>
+    </section>
+
+    <section class="sec" id="modules">
+      <h2>Modules</h2>
+      <p class="caption">Every lesson in order. Written lessons open in the Teaching App; the rest are locked until they're published.</p>
+      <div class="grid3" id="module-cards"></div>
+    </section>
+
+    <section class="sec" id="progress">
+      <h2>Progress</h2>
+      <p class="caption">Saved in this browser (localStorage, keys prefixed <code>java.</code>). Tick topics in the explorer below or finish lessons in the Teaching App.</p>
+      <p id="progress-lead"></p>
+      <div class="metrics" id="metrics"></div>
+      <div class="card"><div class="legend"><span><i style="background:var(--c0)"></i>Done</span><span><i style="background:var(--other)"></i>To do</span></div><div class="bars" id="progress-bars" style="margin-top:14px"></div></div>
+      <div class="btnrow"><button class="btn" id="reset-progress" type="button">Clear all progress</button></div>
+    </section>
+
+    <section class="sec" id="explorer">
+      <h2>Topic explorer</h2>
+      <p class="caption">Filter, search, then expand a topic for why it matters, key concepts and related lessons.</p>
+      <div class="controls">
+        <div class="seg" id="track"></div>
+        <label class="field">Module<select id="group"></select></label>
+        <label class="field">Search<input type="search" id="q" placeholder="e.g. hashmap, volatile, jpa, rag"></label>
+        <label class="toggle"><input type="checkbox" id="hide-done"> Hide done</label>
+        <button class="btn" id="reset" type="button">Reset</button>
+      </div>
+      <div class="tablewrap" id="table-wrap"></div>
+      <p id="nomatch" hidden></p>
+      <div id="details"></div>
+    </section>
+
+    <section class="sec" id="priority">
+      <h2>Interview priorities</h2>
+      <p class="caption">Topics that come up most often in Java backend interviews, from our reading of common interview guides; a study-order heuristic, not a claim about any particular company.</p>
+      <div class="tablewrap" id="priority-table"></div>
+    </section>
+
+    <section class="sec" id="plan">
+      <h2>Suggested study plan</h2>
+      <p class="caption">About 1–1.5 hours a day. Compress or stretch to fit; do the practice questions before moving on.</p>
+      <div class="tablewrap" id="plan-table"></div>
+    </section>
+
+    <section class="sec" id="jvm">
+      <h2>The JVM at a glance</h2>
+      <div class="diagram" id="dg-jvm"></div>
+    </section>
+
+    <section class="sec" id="versions">
+      <h2>Java versions that matter</h2>
+      <div class="tablewrap" id="versions-table"></div>
+    </section>
+
+    <section class="sec" id="next">
+      <h2>How we'll use this hub</h2>
+      <div class="callout"><span class="lead">Next step</span>Lessons are published in roadmap order; each topic in the explorer links to its lesson once it is ready, and progress shows up here. Links to LLD and HLD lessons work once this app sits next to them in the combined study site.</div>
+      <div class="links"><a href="index.html">Java Teaching App<span class="s">Lesson player, starting with J01: Java basics &amp; the JVM</span></a><a href="interview.html">VIP Java Interview Questions<span class="s">Model answers with filters and bookmarks</span></a><a href="fde.html">FDE Roadmap<span class="s">Forward Deployed Engineer skills map and week-by-week plan</span></a></div>
+    </section>
+  </main>
+  <a class="btn backtop" href="#">↑ Top</a>
+</body>
+</html>
