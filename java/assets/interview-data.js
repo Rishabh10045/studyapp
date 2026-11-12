@@ -936,5 +936,146 @@ synchronized (lock) {
     "Or interrupts are swallowed in the loop.",
     "Include the flag in the condition, notifyAll under the lock, honour interrupts, or use BlockingQueue with poison pill/poll timeout."]);
 
+  Q(MT, "Synchronizers", "Easy", true, "J21", "CountDownLatch vs CyclicBarrier?", [
+    "Latch: wait until a count of events reaches zero; countDown never blocks; one-shot.",
+    "Barrier: N parties wait for each other; released together; resets each round; optional barrier action.",
+    "A failed party breaks a barrier (BrokenBarrierException); a missing countDown hangs latch waiters."]);
+  Q(MT, "Synchronizers", "Easy", true, "J21", "What is a Semaphore used for?", [
+    "Holds N permits; acquire takes one (blocking), release returns one.",
+    "Limits concurrent access: bulkheads, resource pools, throttling expensive work.",
+    "No ownership: any thread may release; keep acquire/release symmetric in try/finally."],
+    { code: `Semaphore permits = new Semaphore(3);
+permits.acquire();
+try { System.out.println("calling partner API, permits left " + permits.availablePermits()); }
+finally { permits.release(); }` });
+  Q(MT, "Synchronizers", "Medium", true, "J21", "How do you wait for N worker threads to finish?", [
+    "CountDownLatch(N) with countDown in finally and await(timeout).",
+    "Or join each thread, or better ExecutorService.invokeAll / CompletableFuture.allOf which also return results and exceptions.",
+    "Structured concurrency (Java 21 preview) for scoped subtasks."]);
+  Q(MT, "Synchronizers", "Medium", false, "J21", "What is a Phaser?", [
+    "A reusable barrier with dynamic registration/deregistration and numbered phases.",
+    "arriveAndAwaitAdvance, arrive, arriveAndDeregister, awaitAdvance; onAdvance hook can terminate.",
+    "Can be tiered for many parties."]);
+  Q(MT, "Synchronizers", "Medium", false, "J21", "What happens if a thread waiting at a CyclicBarrier is interrupted or times out?", [
+    "The barrier becomes broken.",
+    "All other waiting parties (and later await calls) get BrokenBarrierException.",
+    "Call reset() to reuse it; handle the exception to stop the round cleanly."]);
+  Q(MT, "Synchronizers", "Medium", false, "J21", "What is an Exchanger?", [
+    "A rendezvous point where two threads swap objects.",
+    "Each exchange(x) blocks until the partner arrives.",
+    "Used for double buffering between a producer and a consumer."]);
+  Q(MT, "Synchronizers", "Medium", true, "J21", "Is a Semaphore a rate limiter?", [
+    "No: it limits concurrency, not operations per time unit.",
+    "Throughput depends on call duration.",
+    "Use a token bucket (Guava RateLimiter, Bucket4j, Resilience4j) for rates."]);
+  Q(MT, "Synchronizers", "Medium", false, "J21", "Why can a CyclicBarrier deadlock on a thread pool?", [
+    "All parties must run concurrently to meet.",
+    "If the pool has fewer threads than parties, the queued parties never start and the running ones wait forever.",
+    "Size the pool ≥ parties or use timeouts."]);
+  Q(MT, "Synchronizers", "Hard", false, "J21", "What is AbstractQueuedSynchronizer (AQS)?", [
+    "Framework behind ReentrantLock, RW locks, Semaphore, CountDownLatch: an int state updated by CAS plus a FIFO queue of parked threads.",
+    "Subclasses implement tryAcquire/tryRelease (exclusive) or tryAcquireShared/tryReleaseShared (shared).",
+    "AQS handles queueing, parking, timeouts, interruption and fairness."]);
+  Q(MT, "Synchronizers", "Hard", false, "J21", "A batch job hangs in CountDownLatch.await with no workers alive. Why?", [
+    "A worker exited without countDown (exception before it, rejected task, early return).",
+    "Fix with countDown in finally, await with timeout, and log task failures.",
+    "Prefer invokeAll/CompletableFuture to propagate failures."]);
+
+  Q(MT, "CompletableFuture", "Easy", true, "J22", "Future vs CompletableFuture?", [
+    "Future only offers blocking get(), isDone and cancel.",
+    "CompletableFuture adds callbacks, composition (thenCompose), combination (thenCombine/allOf/anyOf), error handling, timeouts and manual completion.",
+    "Enables non-blocking pipelines; block only at the edge."]);
+  Q(MT, "CompletableFuture", "Easy", true, "J22", "thenApply vs thenCompose?", [
+    "thenApply maps the result with a synchronous function (map).",
+    "thenCompose chains a function that returns another CompletableFuture and flattens it (flatMap).",
+    "Using thenApply for async functions gives nested futures."],
+    { code: `CompletableFuture<Integer> points = CompletableFuture.supplyAsync(() -> "u42")
+    .thenCompose(user -> CompletableFuture.supplyAsync(() -> user.length() * 100));
+System.out.println(points.join());` });
+  Q(MT, "CompletableFuture", "Medium", true, "J22", "How do you run several async calls in parallel and combine the results?", [
+    "Start them all first (supplyAsync with an executor).",
+    "thenCombine for two; allOf(...).thenApply(v -> futures.stream().map(CompletableFuture::join).toList()) for many.",
+    "anyOf for the first to complete."]);
+  Q(MT, "CompletableFuture", "Medium", true, "J22", "How do you handle exceptions with CompletableFuture?", [
+    "exceptionally (failure only), handle (both outcomes), whenComplete (observe), exceptionallyCompose (async fallback).",
+    "Dependent stages are skipped after a failure.",
+    "Exceptions from upstream stages arrive wrapped in CompletionException: use getCause()."]);
+  Q(MT, "CompletableFuture", "Medium", true, "J22", "Which thread pool does supplyAsync use by default and why does it matter?", [
+    "ForkJoinPool.commonPool(), cores − 1 threads, shared JVM-wide.",
+    "Blocking I/O there starves parallel streams and other async code.",
+    "Pass a dedicated executor (or virtual threads) for I/O."]);
+  Q(MT, "CompletableFuture", "Medium", false, "J22", "thenApply vs thenApplyAsync?", [
+    "thenApply runs on the thread completing the previous stage, or the caller if already complete.",
+    "thenApplyAsync submits the function to an executor (common pool by default).",
+    "Use Async with an explicit executor for slow callbacks or thread control."]);
+  Q(MT, "CompletableFuture", "Medium", false, "J22", "join() vs get()?", [
+    "Both block.",
+    "join throws unchecked CompletionException/CancellationException.",
+    "get throws checked ExecutionException and InterruptedException; get(timeout) adds TimeoutException."]);
+  Q(MT, "CompletableFuture", "Medium", false, "J22", "How do you add timeouts to a CompletableFuture?", [
+    "orTimeout(t, unit) completes exceptionally with TimeoutException.",
+    "completeOnTimeout(value, t, unit) completes with a default.",
+    "Neither stops the underlying task; cancel(true) doesn't interrupt either; set I/O timeouts too."]);
+  Q(MT, "CompletableFuture", "Hard", false, "J22", "Why can joining futures inside a task on a bounded pool deadlock?", [
+    "Outer tasks occupy all threads and block waiting for inner tasks queued on the same pool.",
+    "Inner tasks never get a thread: thread-starvation deadlock.",
+    "Compose with allOf/thenCompose without blocking, use separate pools, or virtual threads."]);
+  Q(MT, "CompletableFuture", "Hard", false, "J22", "Design a fan-out over N providers with partial results.", [
+    "One future per provider on an I/O executor, each with completeOnTimeout and exceptionally fallbacks so it always completes normally.",
+    "allOf, collect, filter unavailable.",
+    "HTTP timeouts, metrics per provider, cached fallbacks."]);
+
+  Q(MT, "Parallelism", "Easy", true, "J23", "Concurrency vs parallelism?", [
+    "Concurrency: structuring many tasks in progress at once (interleaved), common for I/O-bound servers.",
+    "Parallelism: executing parts of one computation simultaneously on multiple cores for speed.",
+    "Concurrent programs may run on one core; parallelism needs multiple."]);
+  Q(MT, "Parallelism", "Medium", true, "J23", "What is the Fork/Join framework and work stealing?", [
+    "ForkJoinPool + RecursiveTask/RecursiveAction for divide and conquer: split, fork, compute, join.",
+    "Each worker has a deque: owner works LIFO, idle workers steal FIFO from others.",
+    "Balances uneven work with low contention; backs parallel streams."],
+    { code: `class Sum extends RecursiveTask<Long> {
+    final long[] a; final int lo, hi;
+    Sum(long[] a, int lo, int hi) { this.a = a; this.lo = lo; this.hi = hi; }
+    protected Long compute() {
+        if (hi - lo <= 10_000) { long s = 0; for (int i = lo; i < hi; i++) s += a[i]; return s; }
+        int mid = (lo + hi) >>> 1; Sum left = new Sum(a, lo, mid); left.fork();
+        return new Sum(a, mid, hi).compute() + left.join();
+    }
+}
+long[] data = LongStream.range(0, 1_000_000).toArray();
+System.out.println(ForkJoinPool.commonPool().invoke(new Sum(data, 0, data.length)));` });
+  Q(MT, "Parallelism", "Easy", true, "J23", "When do parallel streams help or hurt?", [
+    "Help: large data, CPU-heavy per-element work, splittable sources, stateless ops, cheap merges.",
+    "Hurt: small data, LinkedList/iterate sources, ordering constraints, boxing, shared state, blocking I/O.",
+    "Measure with JMH."]);
+  Q(MT, "Parallelism", "Medium", true, "J23", "Which thread pool do parallel streams use?", [
+    "The common ForkJoinPool (parallelism cores − 1) plus the calling thread.",
+    "Shared with CompletableFuture default async methods and other libraries.",
+    "Configure with -Djava.util.concurrent.ForkJoinPool.common.parallelism or submit the stream to a custom pool."]);
+  Q(MT, "Parallelism", "Medium", true, "J23", "What is Amdahl's law?", [
+    "Speedup = 1 / (s + (1 − s)/N) for serial fraction s on N cores.",
+    "Maximum speedup is 1/s regardless of cores.",
+    "Focus on shrinking serial bottlenecks; Gustafson's law covers scaling problem size."]);
+  Q(MT, "Parallelism", "Medium", false, "J23", "How do you choose the threshold in a RecursiveTask?", [
+    "Leaves big enough that task overhead is small (≈10–100 µs of work).",
+    "Small enough to create several times more tasks than cores for load balancing.",
+    "Measure; too small multiplies overhead, too large leaves cores idle."]);
+  Q(MT, "Parallelism", "Medium", false, "J23", "What are correctness pitfalls of parallel streams?", [
+    "Side effects on shared non-thread-safe collections lose data or throw.",
+    "reduce needs an associative operation and a real identity.",
+    "Order-dependent logic and stateful lambdas give nondeterministic results."]);
+  Q(MT, "Parallelism", "Medium", false, "J23", "Why is benchmarking Java code with System.nanoTime unreliable?", [
+    "JIT warm-up and OSR, dead-code elimination, constant folding, GC and noise.",
+    "Order effects when comparing variants in one JVM.",
+    "Use JMH: forks, warm-ups, iterations, Blackhole, statistics."]);
+  Q(MT, "Parallelism", "Hard", false, "J23", "Why are parallel streams risky in a web service request path?", [
+    "All requests share the small common pool; concurrent requests compete and add latency variance.",
+    "Blocking calls inside starve the pool for the whole JVM.",
+    "Use dedicated executors or virtual threads for I/O fan-out."]);
+  Q(MT, "Parallelism", "Hard", false, "J23", "What does a JMH benchmark need to be trustworthy?", [
+    "Warm-up and measurement iterations, multiple forks, realistic @Param sizes.",
+    "Consume results (return or Blackhole) to avoid dead-code elimination; @State setup outside measurement.",
+    "Stable hardware, error margins reported, and profilers to explain results."]);
+
   window.JAVA_IQ = QS;
 })();
