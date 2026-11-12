@@ -795,5 +795,146 @@ System.out.println(c.get());` });
     "Code with a missing happens-before may work by accident on x86.",
     "Reason with the JMM rather than tests; use jcstress for litmus testing."]);
 
+  Q(MT, "Locks", "Easy", true, "J18", "ReentrantLock vs synchronized?", [
+    "Same mutual exclusion and memory semantics.",
+    "ReentrantLock adds tryLock, timed and interruptible acquisition, fairness, multiple Conditions, and non-block-structured locking.",
+    "It must be released in finally; synchronized releases automatically. On Java 21, synchronized pins virtual threads."]);
+  Q(MT, "Locks", "Easy", true, "J18", "What is a reentrant lock?", [
+    "The owning thread can acquire it again without deadlocking itself.",
+    "A hold count is kept; the lock is released when it returns to zero.",
+    "Both synchronized and ReentrantLock are reentrant; StampedLock is not."]);
+  Q(MT, "Locks", "Easy", true, "J18", "What is the correct way to use a Lock?", [
+    "Call lock() just before try, do the work in try, unlock() in finally.",
+    "Nothing between lock() and try that could throw or return.",
+    "Use tryLock with a timeout when waiting forever is unacceptable."],
+    { code: `Lock lock = new ReentrantLock();
+lock.lock();
+try {
+    // critical section
+} finally {
+    lock.unlock();
+}` });
+  Q(MT, "Locks", "Medium", true, "J18", "Fair vs non-fair locks?", [
+    "Fair: FIFO among waiting threads, no starvation, lower throughput.",
+    "Non-fair (default): arriving threads may barge, much higher throughput.",
+    "Use fair only for proven starvation; tryLock() barges even on fair locks."]);
+  Q(MT, "Locks", "Medium", true, "J18", "How does a ReadWriteLock work? Can you upgrade a read lock to a write lock?", [
+    "Many concurrent readers or one exclusive writer.",
+    "A waiting writer blocks new readers (non-fair mode heuristic), avoiding writer starvation.",
+    "Upgrade deadlocks: the write lock waits for all readers including yourself. Downgrade (write → read) is allowed."]);
+  Q(MT, "Locks", "Medium", false, "J18", "What is StampedLock and how does an optimistic read work?", [
+    "Lock with write, read and optimistic-read modes using long stamps.",
+    "tryOptimisticRead returns a stamp without locking; copy fields; validate(stamp); on failure re-read under readLock.",
+    "Not reentrant and no Conditions."]);
+  Q(MT, "Locks", "Medium", true, "J18", "How does tryLock help prevent deadlocks?", [
+    "Acquire the first lock, try the second with a timeout; if it fails release everything and retry after a random back-off.",
+    "This removes hold-and-wait.",
+    "Alternatively impose a global lock order."]);
+  Q(MT, "Locks", "Medium", false, "J18", "What does lockInterruptibly do?", [
+    "Waits for the lock but throws InterruptedException if the thread is interrupted while waiting.",
+    "lock() and synchronized ignore interrupts while waiting.",
+    "Lets cancellation and shutdownNow stop threads stuck waiting on a lock."]);
+  Q(MT, "Locks", "Medium", false, "J18", "What is lock striping?", [
+    "Splitting a structure's lock into N locks chosen by hash(key) so unrelated keys proceed in parallel.",
+    "Used by Java 7 ConcurrentHashMap segments and Guava Striped.",
+    "Bounded memory versus a lock per key."]);
+  Q(MT, "Locks", "Hard", false, "J18", "Many threads in a dump are parked on the same ReentrantLock. How do you find and fix the cause?", [
+    "Locate the owner via jstack's Locked ownable synchronizers; see what it does or whether the lock leaked (owner dead).",
+    "Shorten critical sections (no I/O under lock), partition, or use concurrent structures/snapshots.",
+    "Use timed tryLock to fail fast; JFR Thread Park events quantify contention."]);
+
+  Q(MT, "Atomics", "Easy", true, "J19", "What is CAS (compare-and-swap)?", [
+    "An atomic CPU instruction: set a memory location to a new value only if it still holds the expected value, and report success.",
+    "Java exposes it via compareAndSet on atomic classes and VarHandles.",
+    "Basis of optimistic, non-blocking algorithms: read, compute, CAS, retry."]);
+  Q(MT, "Atomics", "Easy", true, "J19", "How does AtomicInteger make increments thread-safe?", [
+    "incrementAndGet performs an atomic read-modify-write (CAS loop or fetch-and-add instruction).",
+    "No lock is taken; failed CAS attempts retry.",
+    "Reads and writes have volatile semantics."],
+    { code: `AtomicInteger hits = new AtomicInteger();
+hits.incrementAndGet();
+hits.updateAndGet(v -> Math.min(v + 10, 100));
+System.out.println(hits.get());` });
+  Q(MT, "Atomics", "Medium", true, "J19", "AtomicLong vs LongAdder?", [
+    "AtomicLong: single variable, exact value, CAS support; contention hurts at high thread counts.",
+    "LongAdder: spreads updates over cells, scales under contention; sum() is not an atomic snapshot; no CAS.",
+    "Metrics → LongAdder; IDs and conditional updates → AtomicLong."]);
+  Q(MT, "Atomics", "Medium", true, "J19", "What is the ABA problem and how do you fix it?", [
+    "A CAS succeeds because the value went A → B → A, hiding intermediate changes.",
+    "Breaks lock-free structures that reuse nodes.",
+    "AtomicStampedReference (version stamp) or AtomicMarkableReference; avoid reusing nodes."]);
+  Q(MT, "Atomics", "Medium", true, "J19", "Is `if (count.get() > 0) count.decrementAndGet();` thread-safe?", [
+    "No: each call is atomic but the check-then-act sequence isn't; two threads can both pass the check.",
+    "Use a CAS loop or getAndUpdate(s -> s > 0 ? s - 1 : s).",
+    "Same reasoning as putIfAbsent vs get-then-put on maps."]);
+  Q(MT, "Atomics", "Medium", false, "J19", "Why must functions passed to updateAndGet/accumulateAndGet be side-effect free?", [
+    "They're re-invoked whenever the CAS fails due to contention.",
+    "Side effects (logging, I/O, other counters) would repeat unpredictably.",
+    "Keep them pure and fast."]);
+  Q(MT, "Atomics", "Medium", false, "J19", "How do you update multiple fields atomically without locks?", [
+    "Hold an immutable object with all fields in an AtomicReference.",
+    "Build the next object from the current one and compareAndSet (or updateAndGet).",
+    "Readers see a consistent snapshot."]);
+  Q(MT, "Atomics", "Medium", false, "J19", "Lock-free vs wait-free vs blocking?", [
+    "Blocking: a lock holder can stall all others.",
+    "Lock-free: some thread always makes progress (CAS loops, ConcurrentLinkedQueue).",
+    "Wait-free: every thread completes in bounded steps (fetch-and-add)."]);
+  Q(MT, "Atomics", "Hard", false, "J19", "What is a VarHandle and what memory modes does it offer?", [
+    "Java 9 typed reference to a field or array element supporting atomic ops (compareAndSet, getAndAdd).",
+    "Modes: plain, opaque, acquire/release, volatile, from weakest to strongest ordering.",
+    "Used to avoid per-object Atomic wrappers and in JDK/library internals; replaces sun.misc.Unsafe usage."]);
+  Q(MT, "Atomics", "Hard", false, "J19", "Why can a heavily contended AtomicLong burn CPU and how do you fix it?", [
+    "All threads CAS one cache line; failures retry and the line bounces between cores.",
+    "Use LongAdder, per-thread counters, batching or partitioning.",
+    "Measure with a profiler/JMH before and after."]);
+
+  Q(MT, "Coordination", "Easy", true, "J20", "Explain wait(), notify() and notifyAll().", [
+    "Object methods callable only while holding that object's monitor (else IllegalMonitorStateException).",
+    "wait releases the monitor and parks in the wait set; returns after notify, timeout, interrupt or spurious wake-up, once it re-acquires the monitor.",
+    "notify wakes one arbitrary waiter, notifyAll wakes all."]);
+  Q(MT, "Coordination", "Easy", true, "J20", "sleep() vs wait()?", [
+    "sleep (Thread, static) keeps locks; wait (Object) releases that monitor.",
+    "wait requires holding the monitor; sleep doesn't.",
+    "wait is woken by notify/notifyAll; sleep only by timeout or interrupt."]);
+  Q(MT, "Coordination", "Medium", true, "J20", "Why call wait() in a while loop rather than an if?", [
+    "Spurious wake-ups are allowed.",
+    "notifyAll wakes several waiters but only one may proceed; barging threads can consume the state first.",
+    "Re-checking the condition after every wake-up is the only safe pattern."],
+    { code: `Object lock = new Object();
+Deque<String> queue = new ArrayDeque<>();
+Thread.ofPlatform().start(() -> { synchronized (lock) { queue.add("job"); lock.notifyAll(); } });
+synchronized (lock) {
+    while (queue.isEmpty()) lock.wait();   // re-check after every wake-up
+    System.out.println("got " + queue.poll());
+}` });
+  Q(MT, "Coordination", "Medium", true, "J20", "notify() vs notifyAll(): when can notify deadlock?", [
+    "notify wakes one arbitrary waiter; with producers and consumers on one monitor it can wake the wrong kind.",
+    "That thread re-waits, the signal is lost, and eventually all threads wait.",
+    "Use notifyAll, or Conditions per predicate with signal()."]);
+  Q(MT, "Coordination", "Medium", true, "J20", "What is a Condition and how is it better than wait/notify?", [
+    "A wait set tied to a Lock (lock.newCondition()); await/signal/signalAll.",
+    "Multiple conditions per lock (notFull, notEmpty) so signals target the right waiters.",
+    "Timed (awaitNanos), uninterruptible and fair-lock variants; still await in a while loop."]);
+  Q(MT, "Coordination", "Medium", false, "J20", "What is a lost wake-up / missed signal?", [
+    "A notify sent when no one waits is discarded.",
+    "A thread that checks state without the lock or waits without checking state can then wait forever.",
+    "Check and modify state under the same lock and wait on state in a loop."]);
+  Q(MT, "Coordination", "Medium", false, "J20", "What are LockSupport.park and unpark?", [
+    "Low-level primitives behind j.u.c.: each thread has one permit.",
+    "unpark makes the permit available (non-cumulative), park consumes it or blocks.",
+    "unpark before park is remembered, avoiding lost wake-ups."]);
+  Q(MT, "Coordination", "Medium", true, "J20", "Implement a producer-consumer with wait/notify.", [
+    "Shared buffer with capacity; synchronized put/take on the same monitor.",
+    "put: while full wait; add; notifyAll. take: while empty wait; remove; notifyAll.",
+    "In production use a BlockingQueue."]);
+  Q(MT, "Coordination", "Hard", false, "J20", "How do you implement a timed wait correctly?", [
+    "Compute a deadline once; loop while the condition is false.",
+    "Wait for the remaining time each iteration (awaitNanos returns it); return false when it reaches zero.",
+    "Propagate InterruptedException or restore the interrupt flag."]);
+  Q(MT, "Coordination", "Hard", false, "J20", "A worker never stops at shutdown and is stuck in Object.wait. What could be wrong?", [
+    "Its wait condition ignores the stop flag, or the flag is set without notifyAll / outside the lock.",
+    "Or interrupts are swallowed in the loop.",
+    "Include the flag in the condition, notifyAll under the lock, honour interrupts, or use BlockingQueue with poison pill/poll timeout."]);
+
   window.JAVA_IQ = QS;
 })();
