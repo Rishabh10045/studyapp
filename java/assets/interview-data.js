@@ -2096,5 +2096,140 @@ System.out.println(r.get("signups").tag("plan", "pro").counter().count());` });
     "Business metrics (orders, payments) and dependency health/latency.",
     "Alert on SLO error-budget burn and user-facing impact, not on every metric spike; use traces and logs for diagnosis."]);
 
+  Q(SB, "Caching", "Easy", true, "S11", "How does caching work in Spring (@Cacheable)?", [
+    "@EnableCaching turns on proxy-based caching; @Cacheable methods are wrapped by a CacheInterceptor.",
+    "The key is computed from arguments; on a hit the method isn't executed, on a miss the result is stored.",
+    "The CacheManager is backed by Caffeine, Redis, JCache etc., auto-configured by Boot."]);
+  Q(SB, "Caching", "Easy", true, "S11", "Difference between @Cacheable, @CachePut and @CacheEvict?", [
+    "@Cacheable: return cached value if present, else run and store.",
+    "@CachePut: always run the method and store/replace the result.",
+    "@CacheEvict: remove a key or all entries (allEntries), optionally beforeInvocation."],
+    { code: `var cm = new ConcurrentMapCacheManager("p"); var c = cm.getCache("p");
+c.put(1, "old"); c.put(1, "new"); System.out.println(c.get(1).get()); c.evict(1); System.out.println(c.get(1));` });
+  Q(SB, "Caching", "Easy", true, "S11", "Why might @Cacheable not work?", [
+    "Self-invocation (this.method()) bypasses the proxy; private/final methods aren't advised.",
+    "@EnableCaching missing, or the object isn't a Spring bean.",
+    "Keys differ every call (e.g. include a unique id), so nothing ever hits."]);
+  Q(SB, "Caching", "Medium", true, "S11", "How are cache keys generated and how do you customise them?", [
+    "SimpleKeyGenerator: no args → SimpleKey.EMPTY, one arg → the arg, several → SimpleKey(args).",
+    "Use SpEL in key (#id, #req.city + ':' + #page) or a custom KeyGenerator bean.",
+    "Keys need correct equals/hashCode and must include everything that changes the result."]);
+  Q(SB, "Caching", "Medium", true, "S11", "Local cache (Caffeine) vs distributed cache (Redis)?", [
+    "Local: in-JVM, sub-microsecond, no serialization, but each instance has its own copy and is lost on restart.",
+    "Distributed: shared consistent copy, survives restarts, scalable; network hop and serialization cost.",
+    "Often combined as L1 (short TTL) + L2 Redis, with invalidation via pub/sub."]);
+  Q(SB, "Caching", "Medium", true, "S11", "How do you handle cache invalidation and stale data?", [
+    "Evict or update on every write path, after the transaction commits.",
+    "Use TTLs as a safety net; choose TTL by staleness tolerance.",
+    "For multi-instance local caches, broadcast invalidations or keep TTLs short; consider versioned keys."]);
+  Q(SB, "Caching", "Medium", false, "S11", "What is the difference between condition and unless in @Cacheable?", [
+    "condition is evaluated before the call; if false, the cache is bypassed entirely.",
+    "unless is evaluated after the call and can use #result to veto storing it (e.g. #result == null).",
+    "Both are SpEL expressions."]);
+  Q(SB, "Caching", "Hard", true, "S11", "What is a cache stampede and how do you prevent it?", [
+    "Many concurrent requests miss the same key (expiry or cold start) and all hit the backend.",
+    "@Cacheable(sync = true) or Caffeine get(key, loader) loads once per key per JVM.",
+    "refreshAfterWrite, jittered TTLs, warm-up, and distributed locks / request coalescing for shared caches."]);
+  Q(SB, "Caching", "Hard", false, "S11", "Which eviction policies do you know? What does Caffeine use?", [
+    "LRU (recency), LFU (frequency), FIFO, TTL/TTI-based expiry, random.",
+    "Caffeine uses W-TinyLFU: a small LRU window plus a frequency-sketch admission filter into a segmented LRU main area.",
+    "It resists scans and one-hit wonders, giving near-optimal hit rates."],
+    { code: `var c = Caffeine.newBuilder().maximumSize(2).executor(Runnable::run).<String, String>build();
+for (String k : List.of("hot", "hot", "hot", "x1", "x2", "x3")) c.get(k, String::toUpperCase);
+c.cleanUp(); System.out.println(c.asMap().keySet());` });
+  Q(SB, "Caching", "Hard", false, "S11", "What should you not cache?", [
+    "Cheap or rarely reused computations; data needing strong consistency (balances, stock at checkout).",
+    "Security decisions that must take effect immediately; unbounded per-user/per-request keys.",
+    "Mutable objects (callers can corrupt shared instances); always bound size and measure the hit ratio."]);
+
+  Q(SB, "Async & scheduling", "Easy", true, "S12", "How does @Async work in Spring?", [
+    "@EnableAsync registers a post-processor that proxies beans with @Async methods.",
+    "Calls through the proxy are submitted to a TaskExecutor (Boot's applicationTaskExecutor by default) and return immediately.",
+    "Return void or CompletableFuture; self-invocation and private methods are not async."]);
+  Q(SB, "Async & scheduling", "Easy", true, "S12", "Difference between fixedRate, fixedDelay and cron in @Scheduled?", [
+    "fixedRate: interval between starts; fixedDelay: interval between the end of one run and the next start.",
+    "cron: calendar-based with six fields (sec min hour day month weekday) and optional zone.",
+    "initialDelay delays the first run; runs of the same method don't overlap."],
+    { code: `var c = CronExpression.parse("0 0 2 * * *");
+System.out.println(c.next(java.time.LocalDateTime.of(2026, 1, 1, 3, 0)));` });
+  Q(SB, "Async & scheduling", "Easy", false, "S12", "Why might an @Async method run synchronously?", [
+    "Called from inside the same class (self-invocation bypasses the proxy).",
+    "@EnableAsync missing, method private/final, or the object isn't a Spring bean.",
+    "Executor configured with SyncTaskExecutor or CallerRunsPolicy kicking in under load."]);
+  Q(SB, "Async & scheduling", "Medium", true, "S12", "How does ThreadPoolTaskExecutor decide to queue, grow or reject?", [
+    "Start threads up to core size; then queue tasks; when the queue is full, add threads up to max size; then apply the rejection policy.",
+    "With an unbounded queue (Boot default) it never grows beyond core and never rejects.",
+    "Choose bounded queues and a policy (abort, caller-runs) deliberately."],
+    { code: `var ex = new ThreadPoolTaskExecutor(); ex.setCorePoolSize(1); ex.setQueueCapacity(1); ex.setMaxPoolSize(1); ex.initialize();
+for (int i = 0; i < 3; i++) try { ex.execute(() -> { try { Thread.sleep(100); } catch (InterruptedException e) { } }); System.out.println("ok " + i); } catch (Exception e) { System.out.println("rejected " + i); }
+ex.shutdown();` });
+  Q(SB, "Async & scheduling", "Medium", true, "S12", "How are exceptions handled in @Async methods?", [
+    "For CompletableFuture returns, the future completes exceptionally; handle with exceptionally/handle or on get/join.",
+    "For void methods, AsyncUncaughtExceptionHandler is called (default logs); customise via AsyncConfigurer.",
+    "The caller's try/catch never sees them."]);
+  Q(SB, "Async & scheduling", "Medium", true, "S12", "Does @Transactional or the SecurityContext propagate into @Async methods?", [
+    "No: both are thread-bound; the async method runs outside the caller's transaction and without its security context.",
+    "Annotate the async method with its own @Transactional, or run it after commit via @TransactionalEventListener.",
+    "Use DelegatingSecurityContextAsyncTaskExecutor and a TaskDecorator for MDC."]);
+  Q(SB, "Async & scheduling", "Medium", false, "S12", "Why is the default scheduler dangerous with long jobs?", [
+    "All @Scheduled methods share a single thread by default.",
+    "A slow or hung job delays every other job; missed fixedRate runs fire in a burst afterwards.",
+    "Increase spring.task.scheduling.pool.size or delegate heavy work to an executor; add timeouts."]);
+  Q(SB, "Async & scheduling", "Hard", true, "S12", "How do you make a scheduled job run only once across multiple instances?", [
+    "ShedLock: an atomic lock row/key per job with lockAtMostFor and lockAtLeastFor; other instances skip.",
+    "Quartz clustered mode with a JDBC job store, or a Kubernetes CronJob / leader election.",
+    "Design the job idempotently in case it runs twice."]);
+  Q(SB, "Async & scheduling", "Hard", false, "S12", "What changes when you enable virtual threads in Spring Boot?", [
+    "spring.threads.virtual.enabled=true: Tomcat, the async executor (SimpleAsyncTaskExecutor) and scheduler use virtual threads.",
+    "Blocking I/O becomes cheap, so thread pools no longer cap concurrency; add explicit limits for downstream protection.",
+    "Watch for pinning and keep CPU-bound work on bounded platform pools."]);
+  Q(SB, "Async & scheduling", "Hard", false, "S12", "When is @Async the wrong tool?", [
+    "When work must not be lost: tasks live in memory and vanish on crash or deploy.",
+    "When it needs retries, ordering, back-pressure across services, or auditing.",
+    "Use an outbox plus a message broker, Quartz with persistence, or Spring Batch instead."]);
+
+  Q(SB, "Messaging", "Easy", true, "S13", "Explain Kafka topics, partitions, offsets and consumer groups.", [
+    "A topic is split into partitions: ordered, append-only logs; each record has an offset within its partition.",
+    "A consumer group shares partitions among its members (one owner per partition); each group receives every record.",
+    "Offsets are committed per group and partition, so consumers resume where they left off and can replay."]);
+  Q(SB, "Messaging", "Easy", true, "S13", "How do you produce and consume messages in Spring Boot?", [
+    "Configure spring.kafka.bootstrap-servers; inject KafkaTemplate and call send(topic, key, value), handling the returned CompletableFuture.",
+    "Annotate a method with @KafkaListener(topics, groupId); Spring runs listener containers that poll and invoke it.",
+    "Configure serializers/deserializers (String, JSON, Avro) and concurrency."]);
+  Q(SB, "Messaging", "Easy", false, "S13", "Kafka vs RabbitMQ?", [
+    "Kafka: distributed log, retention and replay, partition ordering, very high throughput, consumers pull and track offsets.",
+    "RabbitMQ: smart broker with exchanges/routing, messages removed on ack, per-message features (priority, TTL).",
+    "Kafka for event streaming/integration; RabbitMQ for task queues and complex routing."]);
+  Q(SB, "Messaging", "Medium", true, "S13", "How does Kafka guarantee message ordering?", [
+    "Only within a partition; records with the same key go to the same partition (hash of key).",
+    "With idempotent producers, retries don't reorder (max.in.flight ≤ 5).",
+    "Consumers must process a partition sequentially; non-blocking retries or parallel processing break order."],
+    { code: `for (String k : List.of("acct-1", "acct-2", "acct-1"))
+    System.out.println(k + " -> partition " + org.apache.kafka.common.utils.Utils.toPositive(org.apache.kafka.common.utils.Utils.murmur2(k.getBytes())) % 4);` });
+  Q(SB, "Messaging", "Medium", true, "S13", "Explain at-most-once, at-least-once and exactly-once delivery.", [
+    "At-most-once: commit before processing; failures lose messages.",
+    "At-least-once: process then commit; failures cause duplicates (Spring default) → idempotent consumers.",
+    "Exactly-once: idempotent producer + transactions for Kafka-to-Kafka processing; external side effects still need idempotency."]);
+  Q(SB, "Messaging", "Medium", true, "S13", "How do you handle failures in a Kafka consumer?", [
+    "DefaultErrorHandler with a back-off for transient errors, and not-retryable exceptions for permanent ones.",
+    "DeadLetterPublishingRecoverer sends exhausted records to a DLT with error headers; monitor and replay it.",
+    "@RetryableTopic for non-blocking retries; ErrorHandlingDeserializer for poison pills."]);
+  Q(SB, "Messaging", "Medium", false, "S13", "What is consumer lag and how do you monitor it?", [
+    "Lag = log-end offset − committed offset per partition for a group.",
+    "Growing lag means consumers can't keep up (slow processing, too few partitions/consumers, rebalances).",
+    "Monitor with Kafka exporter/Burrow/Micrometer metrics and alert on lag or time-lag."]);
+  Q(SB, "Messaging", "Hard", true, "S13", "What is the transactional outbox pattern and why is it needed?", [
+    "Writing to the DB and publishing to Kafka are two systems: a crash between them causes inconsistency (dual write).",
+    "Insert the event into an outbox table in the same DB transaction as the business change.",
+    "A relay (poller or Debezium CDC) publishes outbox rows and marks them sent; consumers are idempotent."]);
+  Q(SB, "Messaging", "Hard", true, "S13", "How do you make a consumer idempotent?", [
+    "Give every event a unique id; record processed ids in a table with a unique constraint in the same transaction as the effect.",
+    "Or make operations naturally idempotent (upserts, state transitions with version checks).",
+    "Skip duplicates when the insert fails."]);
+  Q(SB, "Messaging", "Hard", false, "S13", "What happens during a consumer rebalance and how do you minimise disruption?", [
+    "Partitions are reassigned when members join, leave or miss heartbeats/max.poll.interval; processing pauses and uncommitted records are redelivered.",
+    "Use cooperative-sticky assignor, static membership, sensible max.poll.records and processing time limits.",
+    "Commit frequently and keep consumers idempotent."]);
+
   window.JAVA_IQ = QS;
 })();
