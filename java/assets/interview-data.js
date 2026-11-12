@@ -428,5 +428,143 @@ System.out.println(hits);` });
     "`put`/`take` block; `offer`/`poll` with timeouts don't block forever.",
     "Prefer bounded queues in services to avoid OOM under overload."]);
 
+  var FN = "Lambdas & functional programming";
+  Q(FN, "Lambdas", "Easy", true, "J10", "What is a functional interface? Is @FunctionalInterface required?", [
+    "An interface with exactly one abstract method; default, static and Object methods don't count.",
+    "Lambdas and method references can only target functional interfaces.",
+    "The annotation is optional; it makes the compiler reject a second abstract method."]);
+  Q(FN, "Lambdas", "Easy", true, "J10", "Lambda vs anonymous class?", [
+    "Lambdas: concise, only for functional interfaces, `this` = enclosing instance, compiled via invokedynamic (no extra class file).",
+    "Anonymous classes: can extend classes, have fields and several methods; `this` = the anonymous object; new class file and object.",
+    "Both capture only effectively final locals."]);
+  Q(FN, "Lambdas", "Medium", true, "J10", "Why must local variables used in a lambda be effectively final?", [
+    "The lambda captures a copy of the value; it may run after the method returns or on another thread.",
+    "Allowing mutation would make the copy stale or require shared mutable stack state.",
+    "Fields aren't copied (accessed via `this`), so they can change; prefer returning values over mutating captured state."]);
+  Q(FN, "Lambdas", "Easy", true, "J10", "Name the core java.util.function interfaces and their methods.", [
+    "`Function<T,R>.apply`, `BiFunction<T,U,R>.apply`, `Supplier<T>.get`, `Consumer<T>.accept`, `Predicate<T>.test`.",
+    "`UnaryOperator<T>` (T → T) and `BinaryOperator<T>` ((T,T) → T).",
+    "Primitive variants (`IntPredicate`, `ToIntFunction`, `IntUnaryOperator`…) avoid boxing."]);
+  Q(FN, "Method references", "Medium", true, "J10", "What kinds of method references exist?", [
+    "Static `Integer::parseInt`; bound instance `obj::method` (receiver evaluated once); unbound instance `String::length` (first argument is the receiver); constructor `ArrayList::new` / `int[]::new`."],
+    { code: `Function<String, Integer> p = Integer::parseInt;
+Function<String, Integer> len = String::length;
+Supplier<List<String>> mk = ArrayList::new;
+System.out.println(p.apply("42") + len.apply("DEL") + mk.get().size());` });
+  Q(FN, "Composition", "Medium", false, "J10", "Difference between `andThen` and `compose`?", [
+    "`f.andThen(g)` = g(f(x)): f first.",
+    "`f.compose(g)` = f(g(x)): g first.",
+    "Predicates compose with `and`, `or`, `negate`, `Predicate.not`; `Function.identity()` is the neutral element."]);
+  Q(FN, "Composition", "Medium", true, "J10", "Sort a list by multiple fields with Comparator combinators.", [
+    "`list.sort(comparing(Emp::dept).thenComparing(Emp::salary, reverseOrder()).thenComparing(Emp::name))`.",
+    "`comparingInt` avoids boxing; `nullsFirst/nullsLast` handle null keys.",
+    "`reversed()` reverses the whole chain so far; avoid `a - b` comparators (overflow)."]);
+  Q(FN, "Lambdas", "Hard", false, "J10", "How are lambdas implemented by the JVM?", [
+    "The body compiles to a private synthetic method; creation is an `invokedynamic` call site bootstrapped by `LambdaMetafactory`.",
+    "At first use a hidden class implementing the interface is generated; non-capturing lambdas are typically cached singletons.",
+    "Capturing lambdas allocate small objects (often removed by escape analysis)."]);
+  Q(FN, "Lambdas", "Medium", false, "J10", "How do you handle checked exceptions inside lambdas?", [
+    "Standard functional interfaces don't declare checked exceptions, so code like `map(p -> Files.readString(p))` doesn't compile.",
+    "Catch and wrap (`UncheckedIOException`, domain exception), or write a throwing functional interface plus an adapter.",
+    "Don't swallow exceptions or return null; consider moving I/O out of the stream."]);
+  Q(FN, "Lambdas", "Hard", false, "J10", "Why does `executor.submit(() -> { throw new Exception(); })` compile?", [
+    "The lambda is compatible with both `Runnable` and `Callable`; for lambdas a non-void functional interface is more specific, so `submit(Callable)` is chosen.",
+    "`Callable.call()` declares `throws Exception`, so the checked exception is allowed.",
+    "Cast to `Runnable` and it fails to compile."]);
+
+  var ST = "Streams";
+  Q(ST, "Basics", "Easy", true, "J11", "Intermediate vs terminal operations? What does lazy mean?", [
+    "Intermediate ops (`filter`, `map`, `sorted`…) return streams and only describe work; terminal ops (`collect`, `toList`, `count`, `forEach`…) run the pipeline.",
+    "Lazy: nothing executes until the terminal op; then elements flow one at a time through all stages.",
+    "Short-circuiting ops (`limit`, `findFirst`, `anyMatch`) can stop early, even on infinite streams."]);
+  Q(ST, "Basics", "Easy", true, "J11", "map vs flatMap?", [
+    "`map`: one input → one output.",
+    "`flatMap`: one input → a stream of outputs, flattened into one stream (e.g. list of lists → elements).",
+    "`mapMulti` (Java 16) is an imperative alternative."]);
+  Q(ST, "Basics", "Easy", false, "J11", "Can a stream be reused? Does it modify its source?", [
+    "No: a second terminal operation throws `IllegalStateException: stream has already been operated upon or closed`.",
+    "Streams never modify the source; modifying the source during the pipeline is interference (CME/NPE/undefined).",
+    "Create a new stream from the source (or a `Supplier<Stream<T>>`) for another pass."]);
+  Q(ST, "Collectors", "Medium", true, "J11", "Group a list by a field and count, sum or collect values per group.", [
+    "`groupingBy(T::key, counting())`, `groupingBy(T::key, summingInt(T::v))`, `groupingBy(T::key, mapping(T::v, toSet()))`.",
+    "Add `TreeMap::new` as the second argument for sorted keys.",
+    "`partitioningBy(pred, downstream)` for two groups (both keys always present)."],
+    { code: `record B(String route, int fare) {}
+var bs = List.of(new B("DEL-BLR", 4850), new B("BOM-GOI", 3200), new B("DEL-BLR", 5300));
+Map<String, Long> n = bs.stream().collect(Collectors.groupingBy(B::route, TreeMap::new, Collectors.counting()));
+System.out.println(n);` });
+  Q(ST, "Collectors", "Medium", true, "J11", "What happens with duplicate keys in `Collectors.toMap`?", [
+    "It throws `IllegalStateException: Duplicate key …`.",
+    "Pass a merge function: `toMap(k, v, (a, b) -> a)` or `Math::min`/`Integer::sum`; and a supplier for the map type.",
+    "Null values also throw NPE."]);
+  Q(ST, "Basics", "Medium", false, "J11", "`Stream.toList()` vs `collect(Collectors.toList())`?", [
+    "`toList()` (Java 16): unmodifiable, allows nulls.",
+    "`Collectors.toList()`: unspecified mutability (an ArrayList today); use `toCollection(ArrayList::new)` if you need to mutate.",
+    "`toUnmodifiableList()`: unmodifiable and null-hostile."]);
+  Q(ST, "Basics", "Medium", false, "J11", "Explain `reduce` and its rules.", [
+    "`reduce(identity, accumulator)` folds elements; `reduce(accumulator)` returns Optional; 3-arg form adds a combiner (parallel / type change).",
+    "Identity must be neutral and the function associative, or parallel results differ.",
+    "Use `sum()`/`collect` instead of reducing into mutable containers."]);
+  Q(ST, "Parallel", "Hard", true, "J11", "When should you use parallel streams?", [
+    "Large, CPU-bound, independent work over splittable sources (arrays, ArrayList, ranges), measured to be faster.",
+    "Avoid for small data, I/O or blocking (they share the ForkJoin common pool), LinkedList/iterate sources, order-dependent ops, shared mutable state.",
+    "In servers, prefer a dedicated pool or executor."]);
+  Q(ST, "Basics", "Medium", false, "J11", "Why does `sorted()` break short-circuiting?", [
+    "It is stateful: it must buffer all elements before emitting the first.",
+    "So `sorted().limit(2)` still reads and processes the whole upstream.",
+    "For top-N on huge data, a bounded heap is cheaper."]);
+  Q(ST, "Coding", "Medium", true, "J11", "Find the frequency of each character in a string with streams.", [
+    "`s.chars().mapToObj(c -> (char) c).collect(groupingBy(identity(), LinkedHashMap::new, counting()))`.",
+    "`LinkedHashMap` keeps first-seen order; TreeMap sorts.",
+    "Filter whitespace first if needed."],
+    { code: `String s = "bangalore";
+Map<Character, Long> freq = s.chars().mapToObj(c -> (char) c)
+    .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()));
+System.out.println(freq);` });
+
+  var OP = "Optional";
+  Q(OP, "Optional", "Easy", true, "J12", "What is Optional and when should you use it?", [
+    "A container holding zero or one non-null value, introduced in Java 8.",
+    "Intended for method return types where absence is a normal outcome (lookups, stream terminals).",
+    "Not for fields, parameters or collections; never return null from an Optional-returning method."]);
+  Q(OP, "Optional", "Easy", true, "J12", "orElse vs orElseGet?", [
+    "`orElse(value)` evaluates its argument eagerly, even when a value is present.",
+    "`orElseGet(supplier)` calls the supplier only when empty.",
+    "Use orElse for constants, orElseGet for computed/expensive/side-effecting defaults."],
+    { code: `Optional<String> o = Optional.of("DEL");
+System.out.println(o.orElseGet(() -> { System.out.println("not printed"); return "x"; }));` });
+  Q(OP, "Optional", "Easy", false, "J12", "Optional.of vs Optional.ofNullable vs Optional.empty?", [
+    "`of(x)`: x must be non-null (NPE otherwise, failing fast).",
+    "`ofNullable(x)`: empty if x is null.",
+    "`empty()`: the absent value."]);
+  Q(OP, "Optional", "Medium", true, "J12", "map vs flatMap on Optional?", [
+    "`map(f)`: f returns a plain value (null result → empty).",
+    "`flatMap(f)`: f returns an Optional; avoids `Optional<Optional<T>>`.",
+    "`filter(p)` empties the Optional when p is false."]);
+  Q(OP, "Optional", "Medium", true, "J12", "Why is `isPresent()` + `get()` considered an anti-pattern?", [
+    "It's a null check in disguise and `get()` throws NoSuchElementException if misused.",
+    "Use `map`/`orElse`/`orElseThrow`/`ifPresentOrElse` instead.",
+    "`orElseThrow()` (Java 10) is the explicit replacement for `get()`."]);
+  Q(OP, "Optional", "Medium", false, "J12", "Why shouldn't Optional be used as a field or parameter?", [
+    "Fields: not Serializable (JPA, caches, Java serialization), extra object per field, JSON needs modules.",
+    "Parameters: callers must wrap, the Optional itself can be null; overloads are clearer.",
+    "Expose `Optional<T> getX()` over a nullable field instead."]);
+  Q(OP, "Optional", "Medium", false, "J12", "How do you use Optional with streams?", [
+    "`findFirst`, `findAny`, `min`, `max`, `reduce(op)` return Optionals.",
+    "`Optional.stream()` (Java 9) gives 0 or 1 elements; `flatMap(Optional::stream)` drops empties.",
+    "Primitive streams return `OptionalInt`/`OptionalDouble`."]);
+  Q(OP, "Optional", "Medium", false, "J12", "What do `Optional.or` and `ifPresentOrElse` (Java 9) do?", [
+    "`or(() -> otherOptional)` lazily supplies an alternative Optional when empty (cache then DB).",
+    "`ifPresentOrElse(action, emptyAction)` runs one of two actions.",
+    "Also Java 9: `Optional.stream()`; Java 10: `orElseThrow()`; Java 11: `isEmpty()`."]);
+  Q(OP, "Optional", "Hard", false, "J12", "How would you handle a Spring Data `findById` that returns Optional in a REST API?", [
+    "In the service: `repo.findById(id).orElseThrow(() -> new NotFoundException(id))`.",
+    "A `@RestControllerAdvice` maps NotFoundException to HTTP 404 (ProblemDetail).",
+    "Unwrap at the boundary; don't put Optionals into entities or DTOs."]);
+  Q(OP, "Optional", "Medium", false, "J12", "Besides Optional, how else can you avoid NullPointerExceptions?", [
+    "Validate at boundaries: `Objects.requireNonNull(x, \"msg\")`, Bean Validation `@NotNull`.",
+    "Return empty collections; use Null Object implementations; `requireNonNullElse` for defaults.",
+    "Nullness annotations (JSpecify) with static analysis (NullAway); helpful NPE messages (Java 14+) aid debugging."]);
+
   window.JAVA_IQ = QS;
 })();
