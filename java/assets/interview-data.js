@@ -654,5 +654,146 @@ System.out.println(r);` });
     "Sealed + switch: one function per operation, compiler-checked exhaustiveness, record patterns for nested data.",
     "Both fit closed hierarchies; open, plugin-style hierarchies favour classic polymorphism."]);
 
+  var MT = "Multithreading";
+  Q(MT, "Threads", "Easy", true, "J15", "Process vs thread?", [
+    "A process has its own address space; threads run inside a process and share its heap.",
+    "Each thread has its own stack and program counter.",
+    "Threads are cheaper to create and communicate through shared memory, which needs synchronization."]);
+  Q(MT, "Threads", "Easy", true, "J15", "What is the difference between start() and run()?", [
+    "`start()` creates a new thread of execution that calls `run()`.",
+    "Calling `run()` directly executes it synchronously on the current thread.",
+    "A thread can be started only once (`IllegalThreadStateException`)."]);
+  Q(MT, "Threads", "Easy", true, "J15", "Runnable vs Callable?", [
+    "Runnable: `void run()`, no checked exceptions.",
+    "Callable<V>: `V call() throws Exception`.",
+    "Submitting either to an ExecutorService returns a Future."]);
+  Q(MT, "Threads", "Medium", true, "J15", "Explain the thread states.", [
+    "NEW, RUNNABLE (running or ready), BLOCKED (waiting for a monitor), WAITING (wait/join/park), TIMED_WAITING (sleep, timed waits), TERMINATED.",
+    "Threads on a ReentrantLock show WAITING (parked), not BLOCKED.",
+    "Read them in thread dumps to diagnose hangs."]);
+  Q(MT, "Threads", "Medium", true, "J15", "How do you stop a thread?", [
+    "Cooperatively: `interrupt()` sets a flag; blocking calls throw InterruptedException; loops check `isInterrupted()`.",
+    "`Thread.stop` is deprecated/removed because it corrupts shared state.",
+    "Restore the flag (`Thread.currentThread().interrupt()`) when you catch InterruptedException and can't rethrow."]);
+  Q(MT, "Threads", "Easy", false, "J15", "sleep() vs wait()?", [
+    "`sleep` is a static Thread method; pauses without releasing locks.",
+    "`wait` is an Object method; must hold the monitor; releases it and waits for notify or timeout.",
+    "Both are interruptible."]);
+  Q(MT, "Threads", "Easy", false, "J15", "What is a daemon thread?", [
+    "A background thread that doesn't prevent JVM exit (GC is one).",
+    "Set with `setDaemon(true)` before start; inherited from the creating thread.",
+    "Don't use for work that must complete."]);
+  Q(MT, "Threads", "Medium", false, "J15", "What happens when a thread throws an uncaught exception? And in an executor?", [
+    "That thread terminates; the UncaughtExceptionHandler (default: stderr) is called; others continue.",
+    "`execute()`: goes to the worker's handler; `submit()`: captured in the Future until `get()`.",
+    "Always check futures or attach handlers."]);
+  Q(MT, "Threads", "Easy", true, "J15", "What is a race condition? Why is count++ not thread-safe?", [
+    "A race: correctness depends on the timing of threads accessing shared state.",
+    "`count++` is read, add, write; interleavings lose updates.",
+    "Fix with synchronized, AtomicInteger/LongAdder, or confinement; volatile isn't enough."],
+    { code: `AtomicInteger c = new AtomicInteger();
+Thread a = new Thread(() -> { for (int i = 0; i < 1000; i++) c.incrementAndGet(); });
+a.start(); a.join();
+System.out.println(c.get());` });
+  Q(MT, "Threads", "Medium", false, "J15", "What does join() do?", [
+    "Waits until the target thread terminates (optionally with a timeout).",
+    "Creates a happens-before edge: the joining thread sees all writes of the joined thread.",
+    "Interruptible: throws InterruptedException."]);
+
+  Q(MT, "Executors", "Easy", true, "J16", "Why use thread pools / ExecutorService?", [
+    "Reuse threads instead of paying creation cost per task.",
+    "Bound concurrency and define overload behaviour (queue, reject).",
+    "Futures for results, exceptions, timeouts and cancellation; central lifecycle and naming."]);
+  Q(MT, "Executors", "Easy", true, "J16", "execute() vs submit()?", [
+    "`execute(Runnable)` returns void; exceptions go to the worker's UncaughtExceptionHandler.",
+    "`submit` accepts Runnable or Callable and returns a Future; exceptions are captured and rethrown from `get()` as ExecutionException.",
+    "Unchecked Futures silently swallow failures."]);
+  Q(MT, "Executors", "Easy", true, "J16", "shutdown() vs shutdownNow() vs awaitTermination()?", [
+    "shutdown: reject new tasks, finish queued ones.",
+    "shutdownNow: interrupt running tasks and return never-started ones.",
+    "awaitTermination blocks until done or timeout; combine them in two phases. Java 19+ `close()` does shutdown + wait."]);
+  Q(MT, "Executors", "Medium", true, "J16", "Explain ThreadPoolExecutor parameters and how it processes a new task.", [
+    "core, max, keepAlive, workQueue, threadFactory, rejection handler.",
+    "Below core → new thread; else queue; if queue full and below max → new thread; else reject.",
+    "So with a bounded queue, the pool grows past core only after the queue fills; with an unbounded queue it never does."],
+    { code: `new ThreadPoolExecutor(8, 16, 60, TimeUnit.SECONDS,
+    new ArrayBlockingQueue<>(200),
+    Thread.ofPlatform().name("api-", 0).factory(),
+    new ThreadPoolExecutor.CallerRunsPolicy());` });
+  Q(MT, "Executors", "Medium", true, "J16", "What rejection policies exist and when do you use each?", [
+    "AbortPolicy (default): throw RejectedExecutionException; fail fast (HTTP 503).",
+    "CallerRunsPolicy: run on the submitter, giving back-pressure.",
+    "DiscardPolicy / DiscardOldestPolicy: drop silently, only for best-effort work. Custom handlers can log, meter or persist."]);
+  Q(MT, "Executors", "Medium", true, "J16", "What is wrong with Executors.newFixedThreadPool and newCachedThreadPool in production?", [
+    "Fixed and single-thread pools use an unbounded LinkedBlockingQueue: backlog grows until OOM, latency grows silently.",
+    "Cached pool allows Integer.MAX_VALUE threads: thread explosion under slow load.",
+    "Prefer an explicit ThreadPoolExecutor with bounded queue and max, or virtual threads with a semaphore."]);
+  Q(MT, "Executors", "Medium", true, "J16", "How do you size a thread pool?", [
+    "CPU-bound: ≈ number of cores.",
+    "I/O-bound: cores × (1 + wait/compute), or Little's law: arrival rate × latency.",
+    "Limit by downstream capacity (DB connections), isolate workloads with bulkheads, then load-test and tune."]);
+  Q(MT, "Executors", "Medium", false, "J16", "invokeAll vs invokeAny?", [
+    "invokeAll runs all tasks and waits for all, returning Futures in input order (timeout cancels unfinished ones).",
+    "invokeAny returns the result of the first task to complete successfully and cancels the rest.",
+    "invokeAny throws ExecutionException only if all fail."]);
+  Q(MT, "Executors", "Medium", true, "J16", "scheduleAtFixedRate vs scheduleWithFixedDelay?", [
+    "Fixed rate: starts every period from the initial time; overruns delay the next start, runs never overlap.",
+    "Fixed delay: waits the delay after each run finishes.",
+    "If a periodic task throws, all later runs are cancelled silently, so catch exceptions inside."]);
+  Q(MT, "Executors", "Hard", false, "J16", "How do you propagate MDC / ThreadLocal context to executor threads?", [
+    "Capture the context when the task is submitted; restore it in the worker before running; clear or restore in finally.",
+    "Use a decorating Executor, Spring's TaskDecorator, or Micrometer context-propagation.",
+    "Clearing matters: pool threads are reused, so stale context leaks into other requests."]);
+
+  Q(MT, "Memory model", "Medium", true, "J17", "What is the Java Memory Model?", [
+    "JLS chapter 17: rules for which values reads of shared variables may return in multi-threaded code.",
+    "Exists because compilers, the JIT and CPUs reorder and cache memory operations.",
+    "Defines happens-before; conflicting accesses without it are data races."]);
+  Q(MT, "Memory model", "Medium", true, "J17", "What is happens-before? Name the main rules.", [
+    "If A happens-before B, A's effects are visible to and ordered before B.",
+    "Program order, monitor unlock → lock, volatile write → read, start() → thread, thread → join(), final-field freeze, j.u.c. hand-offs.",
+    "It is transitive."]);
+  Q(MT, "Memory model", "Easy", true, "J17", "What does volatile do? Is volatile count++ thread-safe?", [
+    "Visibility (writes seen by later reads), ordering (acts as a publication barrier), atomic long/double reads and writes.",
+    "count++ is not atomic: read, add, write can interleave and lose updates.",
+    "Use AtomicInteger/LongAdder or a lock."],
+    { code: `class Worker {
+    volatile boolean running = true;             // ok: flag
+    volatile int count;                          // count++ still loses updates
+    final AtomicInteger safeCount = new AtomicInteger();
+}` });
+  Q(MT, "Memory model", "Easy", true, "J17", "synchronized vs volatile?", [
+    "synchronized: mutual exclusion + visibility; supports compound actions and multi-field invariants; may block.",
+    "volatile: visibility + ordering of one variable, non-blocking, no compound atomicity.",
+    "volatile suits flags and immutable snapshot references."]);
+  Q(MT, "Memory model", "Easy", true, "J17", "What does synchronized lock on for instance methods, static methods and blocks?", [
+    "Instance method: `this`; static method: the Class object; block: the given object.",
+    "Intrinsic locks are reentrant.",
+    "Use a private final lock object so outside code can't interfere; never lock on boxed values or string literals."]);
+  Q(MT, "Memory model", "Medium", true, "J17", "Why is double-checked locking broken without volatile? Show a correct lazy singleton.", [
+    "The reference may be published before the constructor's writes become visible; the unlocked check can return a half-built object.",
+    "volatile on the instance field fixes it (Java 5+).",
+    "Holder class idiom or enum singletons are simpler."],
+    { code: `class Config {
+    private static class Holder { static final Config INSTANCE = new Config(); }
+    static Config get() { return Holder.INSTANCE; }
+}` });
+  Q(MT, "Memory model", "Medium", true, "J17", "What is safe publication?", [
+    "Making an object reference and its initialized state visible to another thread together.",
+    "Static initializer, volatile/AtomicReference, final field, lock-guarded field, concurrent collections and other j.u.c. hand-offs.",
+    "Plain shared fields are unsafe publication."]);
+  Q(MT, "Memory model", "Medium", true, "J17", "How do you make a class immutable and why is it thread-safe?", [
+    "Final class or record, private final fields, no setters, defensive copies, no this-escape.",
+    "Final-field semantics guarantee visibility of the constructed state to all threads.",
+    "State never changes, so no synchronization is needed."]);
+  Q(MT, "Memory model", "Hard", false, "J17", "What is this-escape and why is it dangerous?", [
+    "Publishing `this` from a constructor (listeners, starting threads, static registries, capturing lambdas).",
+    "Other threads may see the object before construction completes, even default values in final fields.",
+    "Use a static factory that constructs, then registers or starts."]);
+  Q(MT, "Memory model", "Hard", false, "J17", "Why can a concurrency bug pass all tests on x86 and fail on ARM?", [
+    "x86 has a strong (TSO) memory model that keeps stores in order; ARM reorders more.",
+    "Code with a missing happens-before may work by accident on x86.",
+    "Reason with the JMM rather than tests; use jcstress for litmus testing."]);
+
   window.JAVA_IQ = QS;
 })();
