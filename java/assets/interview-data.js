@@ -1744,5 +1744,211 @@ try (var ctx = SpringApplication.run(App.class)) {
     System.out.println("sold " + sold.get() + ", left " + jdbc.queryForObject("select qty from stock", Integer.class));
 }` });
 
+  var JV = "JVM internals";
+  Q(JV, "Class loading", "Easy", true, "J28", "Explain the class loading process in the JVM.", [
+    "Loading: a class loader finds the bytes and creates the Class object.",
+    "Linking: verification (bytecode safety), preparation (static fields get default values), resolution (symbolic → direct references, usually lazy).",
+    "Initialisation: runs <clinit> (static initialisers and blocks in order) once, on first active use.",
+    "Classes are unloaded only when their class loader becomes unreachable."]);
+  Q(JV, "Class loading", "Easy", true, "J28", "What class loaders does the JVM have, and what is parent delegation?", [
+    "Bootstrap (native; java.base), platform (other Java SE/JDK modules), application/system (class path and module path), plus custom loaders.",
+    "Parent delegation: a loader asks its parent first and defines the class itself only if the parent can't, keeping core classes unique and protected."],
+    { code: `class Mine { }
+System.out.println(String.class.getClassLoader() + " / " + java.sql.Driver.class.getClassLoader().getName() + " / " + Mine.class.getClassLoader().getName());` });
+  Q(JV, "Class loading", "Easy", true, "J28", "ClassNotFoundException vs NoClassDefFoundError?", [
+    "ClassNotFoundException: checked; thrown by Class.forName/loadClass when a class requested by name isn't found.",
+    "NoClassDefFoundError: Error; a class that existed at compile time is missing at runtime or failed static initialisation earlier.",
+    "Check the runtime classpath, dependency versions, and the first ExceptionInInitializerError."],
+    { code: `try { Class.forName("com.example.Missing"); } catch (ClassNotFoundException e) { System.out.println(e); }` });
+  Q(JV, "Class loading", "Medium", true, "J28", "When is a class initialised? Give cases where it is loaded but not initialised.", [
+    "Initialised on: new, static method call, non-constant static field access, Class.forName(name), subclass initialisation, main class.",
+    "Not initialised by: compile-time constants (inlined), X.class, new X[n], forName(name, false, loader), accessing a superclass static field via a subclass (only the superclass is initialised)."],
+    { code: `class P { static { System.out.print("P-init "); } static int f = 1; static final int K = 9; }
+class C extends P { static { System.out.print("C-init "); } }
+int k = P.K; System.out.print("| const done | ");
+C[] arr = new C[2]; System.out.print("array done | ");
+int f = C.f; System.out.println("| field via C done");` });
+  Q(JV, "Class loading", "Medium", true, "J28", "What is the order of initialisation for a subclass instance?", [
+    "Once per class: superclass static initialisers, then subclass static initialisers, each top to bottom.",
+    "Per object: superclass instance initialisers/blocks and constructor, then subclass field initialisers/blocks and constructor body.",
+    "Overridable methods called from the superclass constructor see uninitialised subclass fields."]);
+  Q(JV, "Class loading", "Medium", true, "J28", "How does the initialization-on-demand holder idiom work?", [
+    "A private static nested Holder class holds the instance in a static final field; get() returns Holder.INSTANCE.",
+    "Holder is initialised only on the first get(), and the JVM guarantees class initialisation happens once, under a lock, with safe publication.",
+    "No synchronized/volatile needed; an enum singleton is an alternative."],
+    { code: `class Cfg { private Cfg() { System.out.println("created"); } private static class H { static final Cfg I = new Cfg(); } static Cfg get() { return H.I; } static void touch() { } }
+Cfg.touch(); System.out.println("touched outer"); System.out.println(Cfg.get() == Cfg.get());` });
+  Q(JV, "Class loading", "Medium", false, "J28", "What happens if a static initialiser throws an exception?", [
+    "The first access throws ExceptionInInitializerError wrapping the cause.",
+    "The class is marked erroneous; later accesses throw NoClassDefFoundError: Could not initialize class X.",
+    "Keep static initialisation trivial and move I/O to regular startup code."]);
+  Q(JV, "Class loading", "Medium", false, "J28", "Can two classes with the same fully qualified name coexist in one JVM?", [
+    "Yes, if defined by different class loaders: a runtime class is identified by name plus defining loader.",
+    "They are distinct types; casting between them throws ClassCastException. App servers and plugin systems rely on this."]);
+  Q(JV, "Class loading", "Hard", true, "J28", "How do you write a custom class loader and when would you need one?", [
+    "Extend ClassLoader (keep loadClass's delegation), override findClass to obtain bytes and call defineClass.",
+    "Uses: plugin isolation, multiple library versions, hot reload, loading from non-file sources, instrumentation.",
+    "Beware leaks: anything holding a reference to the loader's classes or instances prevents unloading."]);
+  Q(JV, "Class loading", "Hard", true, "J28", "What causes class loader leaks and OutOfMemoryError: Metaspace?", [
+    "Class metadata lives in Metaspace and is freed only when a loader and all its classes/instances are unreachable.",
+    "Leaks come from ThreadLocals on pooled threads, threads/timers started by the app, JDBC drivers in DriverManager, static caches in parent-loaded libraries, listeners and shutdown hooks.",
+    "Diagnose with jcmd VM.classloader_stats/VM.metaspace and a heap dump path-to-GC-roots of the old loader; fix the reference and cap MaxMetaspaceSize."]);
+
+  Q(JV, "Memory & JIT", "Easy", true, "J29", "What are the JVM runtime data areas?", [
+    "Shared: heap (objects/arrays, GC-managed, young + old), Metaspace (class metadata), code cache (JIT code).",
+    "Per thread: Java stack (frames with locals and operand stack), PC register, native method stack.",
+    "Plus off-heap direct memory and other native allocations."]);
+  Q(JV, "Memory & JIT", "Easy", true, "J29", "Stack vs heap in Java?", [
+    "Stack: per thread, holds frames with primitives and references for active method calls; freed on return; fixed size (-Xss).",
+    "Heap: shared, holds all objects and arrays; freed by GC; sized with -Xms/-Xmx.",
+    "Escape analysis can avoid heap allocation for non-escaping objects, but there is no explicit stack allocation in Java."]);
+  Q(JV, "Memory & JIT", "Easy", true, "J29", "What replaced PermGen and why?", [
+    "Java 8 replaced PermGen with Metaspace in native memory.",
+    "PermGen had a fixed maximum and caused frequent OutOfMemoryError: PermGen space; Metaspace grows automatically (cap with MaxMetaspaceSize).",
+    "Interned strings and static fields moved to the heap."]);
+  Q(JV, "Memory & JIT", "Medium", true, "J29", "Name the different OutOfMemoryError messages and what each means.", [
+    "Java heap space / GC overhead limit exceeded: heap exhausted.",
+    "Metaspace: class metadata (class loader leaks).",
+    "Cannot reserve direct buffer memory: off-heap buffers.",
+    "Unable to create native thread: OS thread limits.",
+    "Requested array size exceeds VM limit: array too large for the VM."],
+    { code: `try { int[] a = new int[Integer.MAX_VALUE]; } catch (OutOfMemoryError e) { System.out.println(e.getMessage()); }` });
+  Q(JV, "Memory & JIT", "Medium", true, "J29", "How large is a Java object? Explain the header and compressed oops.", [
+    "Header: 8-byte mark word + 4-byte compressed class pointer (12 bytes); arrays add 4 bytes of length.",
+    "Fields follow; total size is padded to 8 bytes: new Object() = 16 bytes, Integer = 16, int[10] = 56.",
+    "Compressed oops use 4-byte references for heaps under ~32 GB."],
+    { code: `var tb = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+long tid = Thread.currentThread().threadId();
+Object[] keep = new Object[10_000];
+long b0 = tb.getThreadAllocatedBytes(tid);
+for (int i = 0; i < keep.length; i++) keep[i] = new Object();
+System.out.println((tb.getThreadAllocatedBytes(tid) - b0) / keep.length + " bytes per Object");` });
+  Q(JV, "Memory & JIT", "Medium", true, "J29", "What is JIT compilation and tiered compilation?", [
+    "The JIT compiles hot bytecode to machine code at runtime using profiling information.",
+    "Tiered: interpreter (tier 0) → C1 with profiling (tier 3) → C2 optimised (tier 4); trivial methods may stop at C1 (tier 1).",
+    "OSR compiles long-running loops mid-execution; compiled code lives in the code cache."]);
+  Q(JV, "Memory & JIT", "Medium", false, "J29", "What is escape analysis?", [
+    "C2 determines whether an object can be accessed outside the method/thread after inlining.",
+    "Non-escaping objects can be scalar-replaced (never allocated) and their locks elided.",
+    "Storing the object in a field, array or passing it to a non-inlined method makes it escape."]);
+  Q(JV, "Memory & JIT", "Medium", false, "J29", "What is deoptimisation in HotSpot?", [
+    "C2 compiles code under speculative assumptions (types seen, branches taken, class hierarchy).",
+    "If an assumption is invalidated, compiled frames fall back to the interpreter and the method is recompiled later.",
+    "Causes temporary slowdowns; visible as 'made not entrant' in PrintCompilation."]);
+  Q(JV, "Memory & JIT", "Hard", true, "J29", "Why does a container running Java get OOM-killed even though the heap isn't full?", [
+    "The container limit covers the whole process: heap plus thread stacks, Metaspace, code cache, direct buffers, GC structures, malloc arenas.",
+    "Set heap via MaxRAMPercentage (~70–75%), cap direct memory and Metaspace, bound threads; use NMT to measure.",
+    "Monitor RSS against the limit."]);
+  Q(JV, "Memory & JIT", "Hard", true, "J29", "How do you inspect a running JVM in production?", [
+    "jcmd: VM.flags, GC.heap_info, Thread.print, GC.class_histogram, GC.heap_dump, VM.native_memory, JFR.start.",
+    "jstat -gcutil for live GC stats; JFR + JDK Mission Control for profiling; -Xlog for GC/safepoint/class logs.",
+    "Expose JMX/Micrometer metrics for heap, GC, threads and buffers continuously."],
+    { code: `var hs = ManagementFactory.getPlatformMXBean(com.sun.management.HotSpotDiagnosticMXBean.class);
+System.out.println("MaxHeapSize = " + hs.getVMOption("MaxHeapSize").getValue() + ", GC = " + ManagementFactory.getGarbageCollectorMXBeans().stream().map(GarbageCollectorMXBean::getName).toList());` });
+
+  Q(JV, "Garbage collection", "Easy", true, "J30", "How does garbage collection work in Java?", [
+    "The collector finds live objects by tracing references from GC roots (thread stacks, static fields, JNI references, monitors).",
+    "Unreachable objects, including cycles, are reclaimed by sweeping, compacting or copying.",
+    "The heap is generational: frequent cheap young collections, rarer old-generation work."]);
+  Q(JV, "Garbage collection", "Easy", true, "J30", "What are GC roots?", [
+    "Starting points for reachability: local variables and operands in active frames, static fields of loaded classes, JNI references, objects used as monitors, and JVM-internal references.",
+    "Anything reachable from them stays alive."]);
+  Q(JV, "Garbage collection", "Easy", true, "J30", "Explain the young and old generations and promotion.", [
+    "New objects go to eden; young GCs copy survivors to a survivor space and age them.",
+    "Objects surviving past the tenuring threshold (or when survivors overflow) are promoted to old.",
+    "Based on the generational hypothesis: most objects die young."],
+    { code: `Function<String, Long> c = k -> ManagementFactory.getGarbageCollectorMXBeans().stream().filter(g -> g.getName().contains(k)).mapToLong(GarbageCollectorMXBean::getCollectionCount).sum();
+long y = c.apply("Young"), o = c.apply("Old");
+for (int i = 0; i < 500_000; i++) { byte[] b = new byte[1_000]; }
+System.out.println("young +" + (c.apply("Young") - y) + ", old +" + (c.apply("Old") - o));` });
+  Q(JV, "Garbage collection", "Medium", true, "J30", "Minor GC vs major GC vs full GC?", [
+    "Minor: young generation only, stop-the-world but short.",
+    "Major: old generation collection (concurrent marking + mixed GCs in G1).",
+    "Full: entire heap stop-the-world, a fallback caused by allocation failure, System.gc(), Metaspace pressure; should be rare."]);
+  Q(JV, "Garbage collection", "Medium", true, "J30", "Compare Serial, Parallel, G1 and ZGC.", [
+    "Serial: single-threaded stop-the-world; small heaps/1 CPU.",
+    "Parallel: multi-threaded stop-the-world; best throughput, longer pauses.",
+    "G1 (default since 9): regions, concurrent marking, evacuation pauses toward MaxGCPauseMillis.",
+    "ZGC: concurrent marking and relocation with load barriers; sub-millisecond pauses, needs headroom and CPU."]);
+  Q(JV, "Garbage collection", "Medium", true, "J30", "How does G1 work?", [
+    "Heap divided into equal regions acting as eden, survivor, old or humongous.",
+    "Young GCs evacuate young regions; when old occupancy crosses IHOP, concurrent marking finds the regions with most garbage.",
+    "Mixed GCs then evacuate young plus selected old regions (garbage first), sized to meet the pause goal; Full GC is the fallback."]);
+  Q(JV, "Garbage collection", "Medium", false, "J30", "What is a stop-the-world pause and a safepoint?", [
+    "STW: all application threads are paused while the GC (or another VM operation) runs.",
+    "Threads stop at safepoints where their state is known; time-to-safepoint adds to pause length.",
+    "Concurrent collectors minimise STW work but still use brief safepoints."]);
+  Q(JV, "Garbage collection", "Medium", true, "J30", "Explain strong, soft, weak and phantom references.", [
+    "Strong: normal references keep objects alive.",
+    "Soft: cleared when memory is low (before OOM).",
+    "Weak: cleared at the next GC once no strong references remain (WeakHashMap keys).",
+    "Phantom: never returns the referent; enqueued after collection for cleanup (Cleaner)."],
+    { code: `var weak = new java.lang.ref.WeakReference<>(new Object());
+var soft = new java.lang.ref.SoftReference<>(new Object());
+System.gc(); Thread.sleep(50);
+System.out.println("weak cleared: " + (weak.get() == null) + ", soft cleared: " + (soft.get() == null));` });
+  Q(JV, "Garbage collection", "Hard", true, "J30", "How would you read and act on GC logs?", [
+    "Enable -Xlog:gc* with rotation in production.",
+    "Check pause kinds and durations vs SLOs, heap after GC trend (live set/leaks), young GC frequency (allocation rate), and Full GC or to-space exhausted events.",
+    "Act: fix allocation hot spots or leaks first, then size heap/regions, adjust pause goal, or switch collector; compare before/after logs."]);
+  Q(JV, "Garbage collection", "Hard", false, "J30", "Why is finalize() deprecated and what replaces it?", [
+    "Finalizers run late or never, on an unspecified thread, delay reclamation, can resurrect objects and hurt performance.",
+    "Use try-with-resources/AutoCloseable for deterministic cleanup and java.lang.ref.Cleaner as a safety net."]);
+
+  Q(JV, "Garbage collection", "Easy", true, "J31", "Can Java have memory leaks if it has garbage collection?", [
+    "Yes: GC only frees unreachable objects; a leak is an object that is still reachable but no longer needed.",
+    "Typical holders: static collections, unbounded caches, registered listeners, ThreadLocals in pools, class loaders pinned by threads or drivers."]);
+  Q(JV, "Garbage collection", "Medium", true, "J31", "How do you find a memory leak in production?", [
+    "Confirm via GC logs/metrics that heap-after-GC rises over time.",
+    "Capture a heap dump (HeapDumpOnOutOfMemoryError or jcmd GC.heap_dump); compare histograms between dumps.",
+    "In MAT: dominator tree / Leak Suspects for the biggest retained objects, then Path to GC Roots to find the holder.",
+    "Fix in code and verify heap-after-GC is flat under the same load."]);
+  Q(JV, "Garbage collection", "Medium", true, "J31", "What is the difference between shallow and retained heap?", [
+    "Shallow: the memory of the object itself.",
+    "Retained: memory that would be freed if the object were collected, i.e. all objects it dominates.",
+    "Leak hunting sorts by retained size."]);
+  Q(JV, "Garbage collection", "Medium", true, "J31", "How do you size the JVM heap in a container?", [
+    "The JVM is container-aware (JDK 10+); default max heap is 25% of the limit.",
+    "Use -XX:MaxRAMPercentage=70–75 (or explicit -Xmx) and leave room for Metaspace, thread stacks, code cache and direct memory.",
+    "OOMKilled (exit 137) means the process exceeded the limit, not necessarily the heap; check NMT."]);
+  Q(JV, "Garbage collection", "Medium", true, "J31", "Why can ThreadLocal cause memory leaks?", [
+    "Values live as long as the thread; pool threads live as long as the application.",
+    "Without remove() values accumulate and leak into the next task's context.",
+    "Always remove() in finally; in app servers stale values can also pin the web-app class loader."],
+    { code: `ThreadLocal<String> ctx = new ThreadLocal<>();
+ExecutorService pool = Executors.newSingleThreadExecutor();
+pool.submit(() -> ctx.set("request-1 data")).get();
+System.out.println("next task on the same thread sees: " + pool.submit(ctx::get).get());
+pool.shutdown();` });
+  Q(JV, "Garbage collection", "Medium", false, "J31", "What GC tuning would you do first for a latency-sensitive service?", [
+    "Turn on GC logging and measure; make sure heap size fits the live set with headroom.",
+    "With G1 set MaxGCPauseMillis and avoid fixing -Xmn so G1 can adapt.",
+    "Reduce allocation rate in hot paths; consider generational ZGC if pauses must be sub-millisecond.",
+    "Change one thing at a time and compare logs."]);
+  Q(JV, "Garbage collection", "Medium", false, "J31", "When should you tune the GC versus change the code?", [
+    "Tune when the live set is legitimately large or pause goals mismatch the workload (evidence from logs).",
+    "Change code when the allocation rate is high (churn) or the live set grows (leak): no flag fixes those.",
+    "Allocation profiles (JFR, async-profiler) show what to change."],
+    { code: `var tmx = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
+long me = Thread.currentThread().threadId(), b0 = tmx.getThreadAllocatedBytes(me);
+List<Long> boxed = new ArrayList<>(); for (long i = 0; i < 100_000; i++) boxed.add(i * 1000);
+long b1 = tmx.getThreadAllocatedBytes(me);
+long[] prim = new long[100_000]; for (int i = 0; i < prim.length; i++) prim[i] = i * 1000L;
+System.out.printf("boxed: %,d bytes, primitive: %,d bytes%n", b1 - b0, tmx.getThreadAllocatedBytes(me) - b1);` });
+  Q(JV, "Garbage collection", "Hard", true, "J31", "Name the different OutOfMemoryError types and their causes.", [
+    "Java heap space: live data exceeds -Xmx (leak or undersized).",
+    "GC overhead limit exceeded: almost all time spent in GC with little freed.",
+    "Metaspace: too many classes, often a class-loader leak.",
+    "Direct buffer memory: off-heap NIO buffers beyond MaxDirectMemorySize.",
+    "Unable to create native thread: thread/OS limits.",
+    "Requested array size exceeds VM limit: a single huge array."]);
+  Q(JV, "Garbage collection", "Hard", false, "J31", "How does a class loader leak happen during redeploys?", [
+    "A class references its loader, and the loader references all its classes and their statics.",
+    "Any reference from a longer-lived loader (DriverManager driver, running thread, ThreadLocal, static registry, shutdown hook) to an object of the old app pins everything.",
+    "Repeated redeploys exhaust Metaspace; fix by deregistering drivers, stopping threads and clearing references on shutdown."]);
+  Q(JV, "Garbage collection", "Hard", false, "J31", "How do listeners and inner classes cause leaks, and how do you prevent them?", [
+    "Event sources keep strong references to listeners; captured variables and the enclosing instance (this$0 in inner/anonymous classes) stay alive.",
+    "Unregister in finally/close, return AutoCloseable subscriptions, use static nested classes, or weak listeners where the API supports them."]);
+
   window.JAVA_IQ = QS;
 })();
